@@ -1,3 +1,4 @@
+#define SDL_MAIN_HANDLED
 #include <stdio.h>
 #include "SDL.h"
 #include "./constant.h"
@@ -13,7 +14,6 @@ SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 SDL_Texture* MC_texture = NULL;
 SDL_Texture* map_texture = NULL;
-SDL_Texture* Enemy_texture[2];
 
 //Time
 int last_frame_time = 0;
@@ -29,13 +29,13 @@ int move_right = FALSE;
 int facing_left = 0; // Add this global variable
 int map[MAP_HEIGHT][MAP_WIDTH];
 
-
+//Player camera position
 struct Camera {
 	float x, y;
 	int width, height;
 } camera = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
 
-
+//Character stat
 struct character {
 	float x;
 	float y;
@@ -45,12 +45,46 @@ struct character {
 	float atk;
 	float health;
 	SDL_Texture* texture;
-	int is_active; // 1 for active, 0 for inactive
-	int type;
 } MC;
 
+//Each enemy type stat
+typedef struct {
+	float width;
+	float height;
+	float movement_speed;
+	float health;
+	float atk;
+	SDL_Texture* texture;
+} Enemy_type;
+
+//Store each enemy in the game;
+typedef struct {
+	SDL_Rect rect; // Position and size
+	int type; // Index to the Enemy_type
+	float currentHealth; // Current health if it can decrease from the base
+	int isActive; // 1 if active, 0 if not
+} Enemy;
+
+//Wave data
+typedef struct {
+	int Enemy_count[MAX_ENEMY_TYPE]; //index will shown amount of itype enemy
+}Wave;
+
+//stage data
+typedef struct {
+	Wave waves[MAX_WAVES];
+} Stage;
+
+//Define struct of enemy data
+Enemy_type type[MAX_ENEMY_TYPE];
+Stage stage1;
+Enemy Enemies[MAX_ENEMIES_STAGE1];
+int randPos;
+int typeTexture;
 
 
+
+//8 spawn position
 struct spawn_pos {
 	float x;
 	float y;
@@ -68,6 +102,13 @@ struct spawn_pos {
 // Initialization and setup functions
 int initialize_window(void);
 void setup(void);
+
+//Enemies function related
+void initialize_enemies(SDL_Renderer* renderer);
+void initialize_stage1_enemies();
+void spawn_wave(int waveIndex);
+void render_enemies(SDL_Renderer* renderer);
+void update_enemies(float delta_time);
 
 // Texture loading
 SDL_Texture* load_texture(const char* filename, SDL_Renderer* renderer);
@@ -87,7 +128,7 @@ void render_health_bar(SDL_Renderer* renderer, float health, float max_health, i
 void destroy_window();
 
 int main(int argc, char *argv[]) {
-	int num = 0;
+	int waveIndex = 0;
 	printf("Game is running...\n");
 	game_is_running = initialize_window();
 
@@ -98,8 +139,13 @@ int main(int argc, char *argv[]) {
 
 		Uint32 currentTime = SDL_GetTicks();
 		if (currentTime - lastPeriodicCall >= periodicInterval) {
-			printf("minute %d\n", num); // Future for enemy wave come every 1 minute.
-			num++;
+			
+			while (waveIndex <= 19) {
+				spawn_wave(waveIndex);
+				waveIndex++;
+				break;
+			}
+
 			lastPeriodicCall += periodicInterval; // Reset the timer
 		}
 
@@ -147,6 +193,8 @@ int initialize_window(void) {
 		return FALSE;
 	}
 
+	initialize_enemies(renderer);
+	initialize_stage1_enemies();
 
 	return TRUE;
 }
@@ -198,6 +246,7 @@ SDL_Texture* load_texture(const char* filename, SDL_Renderer* renderer) {
 void setup() {
 	srand(time(NULL));
 
+	//Set up MC stat
 	MC.x = MAP_WIDTH / 2;
 	MC.y = MAP_HEIGHT / 2;
 	MC.width = 83;
@@ -206,13 +255,110 @@ void setup() {
 	MC.health = 100.0f; // maximum health is 100
 
 
-	MC.texture = load_texture("C:/Users/Kanta/source/repos/BIT_Kitchen_Nightmare/BIT_Kitchen_Nightmare/Picture/MC2.png", renderer);
-	map_texture = load_texture("C:/Users/Kanta/source/repos/BIT_Kitchen_Nightmare/BIT_Kitchen_Nightmare/Picture/BG4K.png", renderer);
+	MC.texture = load_texture("Assets/MC2.png", renderer);
+	map_texture = load_texture("Assets/BG4K.png", renderer);
 
 	camera.x = MC.x - WINDOW_WIDTH / 2;
 	camera.y = MC.y - WINDOW_HEIGHT / 2;
 
 }
+
+//Each type of Enemy stat initialize
+void initialize_enemies(SDL_Renderer* renderer) {
+	type[0].width = 50;
+	type[0].height = 70;
+	type[0].movement_speed = 200;
+	type[0].health = 100;
+	type[0].atk = 10;
+	type[0].texture = load_texture("Assets/Enemy1.png", renderer);
+	
+	type[1].width = 48;
+	type[1].height = 70;
+	type[1].movement_speed = 150;
+	type[1].health = 200;
+	type[1].atk = 30;
+	type[1].texture = load_texture("Assets/Enemy2.png", renderer);
+	
+}
+
+//initialize enemy per wave.
+void initialize_stage1_enemies() {
+
+	stage1.waves[0].Enemy_count[0] = 15; 
+	stage1.waves[0].Enemy_count[1] = 5;
+
+	stage1.waves[1].Enemy_count[0] = 20;
+	stage1.waves[1].Enemy_count[1] = 10;
+
+	stage1.waves[2].Enemy_count[0] = 25;
+	stage1.waves[2].Enemy_count[1] = 10;
+
+	stage1.waves[2].Enemy_count[0] = 25;
+	stage1.waves[2].Enemy_count[1] = 20;
+
+	stage1.waves[4].Enemy_count[0] = 30;
+	stage1.waves[4].Enemy_count[1] = 30;
+
+}
+
+//Spawn a wave of enemy
+void spawn_wave(int waveIndex) {
+	Wave wave = stage1.waves[waveIndex];
+	for (int typeIndex = 0; typeIndex < MAX_ENEMY_TYPE; ++typeIndex) { //loop for amount of type
+		int count = wave.Enemy_count[typeIndex];
+		for (int i = 0; i < count; ++i) { //loop for amount of each type
+			// Find a free spot in the enemies array
+			for (int j = 0; j < MAX_ENEMIES_STAGE1; ++j) {
+				if (!Enemies[j].isActive) {
+					Enemies[j].type = typeIndex;
+					Enemies[j].isActive = 1;
+					Enemies[j].currentHealth = type[typeIndex].health;
+					
+					randPos = rand() % 8; //Random postion for enemy's spawn
+						
+					Enemies[j].rect.x = spawn_position[randPos].x;
+					Enemies[j].rect.y = spawn_position[randPos].y;
+					Enemies[j].rect.w = type[typeIndex].width;
+					Enemies[j].rect.h = type[typeIndex].height;
+					break; // Break the loop after setting up an enemy
+				}
+			}
+		}
+	}
+}
+
+void render_enemies(SDL_Renderer* renderer) {
+	for (int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
+		if (Enemies[i].isActive) {
+			
+			SDL_RenderCopy(renderer, type[Enemies[i].type].texture, NULL, &Enemies[i].rect);
+		}
+	}
+}
+
+void update_enemies(float delta_time) {
+	for (int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
+		if (Enemies[i].isActive) {
+			float dx = MC.x - (Enemies[i].rect.x + Enemies[i].rect.w / 2);
+			float dy = MC.y - (Enemies[i].rect.y + Enemies[i].rect.h / 2);
+			float distance = sqrt(dx * dx + dy * dy);
+
+			// Avoid division by zero
+			if (distance == 0) continue;
+
+			float dx_normalized = dx / distance;
+			float dy_normalized = dy / distance;
+
+			// Get the enemy's movement speed
+			float speed = type[Enemies[i].type].movement_speed;
+
+			// Update enemy position
+			Enemies[i].rect.x += dx_normalized * speed * delta_time;
+			Enemies[i].rect.y += dy_normalized * speed * delta_time;
+		}
+	}
+}
+
 
 void update_camera() {
 	camera.x = MC.x - WINDOW_WIDTH / 2;
@@ -239,8 +385,11 @@ void update(float delta_time) {
 	if (MC.x + MC.width > MAP_WIDTH) MC.x = MAP_WIDTH - MC.width; // Use 1920 for the new map width
 	if (MC.y + MC.height > MAP_HEIGHT) MC.y = MAP_HEIGHT - MC.height; // Use 1080 for the new map height
 
+	update_enemies(delta_time);
+
 	// Update camera position to follow the ball
 	update_camera();
+	
 }
 
 void render_health_bar(SDL_Renderer* renderer, float health, float max_health, int x, int y, int width, int height) {
@@ -295,10 +444,13 @@ void render() {
 	int health_bar_y = 0; // Adjusted to be at the bottom of the window
 	render_health_bar(renderer, MC.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
 
+	//Render enemies
+	render_enemies(renderer);
 
 	SDL_RenderPresent(renderer);
 }
 
+//Control framerate( 60 FPS )
 void cap_framerate(int* last_frame_time, float* delta_time) {
 
 	int time_to_wait = FRAME_TARGET_TIME - (SDL_GetTicks() - *last_frame_time);
@@ -309,7 +461,6 @@ void cap_framerate(int* last_frame_time, float* delta_time) {
 	*delta_time = (SDL_GetTicks() - *last_frame_time) / 1000.0f;
 	*last_frame_time = SDL_GetTicks();
 }
-
 
 void destroy_window() {
 	SDL_DestroyRenderer(renderer);
