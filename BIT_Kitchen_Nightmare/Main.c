@@ -121,7 +121,8 @@ SDL_Texture* load_texture(const char* filename, SDL_Renderer* renderer);
 void process_input(void);
 void update(float delta_time);
 void render(void);
-void update_camera(void); void cap_framerate(int* last_frame_time, float* delta_time); //FPS
+void update_camera(void); 
+void cap_framerate(int* last_frame_time, float* delta_time); //FPS
 
 
 // Rendering helpers
