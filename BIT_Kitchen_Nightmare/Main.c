@@ -8,12 +8,15 @@
 #include <stdlib.h>
 #include <time.h>
 
-
+//Define variable
 int game_is_running = FALSE;
+int in_menu = TRUE;
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 SDL_Texture* MC_texture = NULL;
 SDL_Texture* map_texture = NULL;
+SDL_Texture* start_button_texture = NULL;
+SDL_Texture* menu_background_texture = NULL;
 
 //Time
 int last_frame_time = 0;
@@ -137,6 +140,7 @@ int main(int argc, char *argv[]) {
 
 	while (game_is_running) {
 
+		//Wave will spawn every 1 minute.
 		Uint32 currentTime = SDL_GetTicks();
 		if (currentTime - lastPeriodicCall >= periodicInterval) {
 			
@@ -206,6 +210,17 @@ void process_input() {
 		if (event.type == SDL_QUIT) {
 			game_is_running = FALSE;
 		}
+
+		if (in_menu) {
+			if (event.type == SDL_MOUSEBUTTONDOWN) {
+				int x, y;
+				SDL_GetMouseState(&x, &y);
+				if (x >= 720 && x <= 1160 && y >= 450 && y <= 670) { // If the mouse click is within the start button area
+					in_menu = FALSE; // Start the game
+				}
+			}
+		}
+
 		if (state[SDL_SCANCODE_ESCAPE]) {
 			game_is_running = FALSE;
 		}
@@ -254,9 +269,11 @@ void setup() {
 	MC.movement_speed = 300.0f;
 	MC.health = 100.0f; // maximum health is 100
 
-
-	MC.texture = load_texture("Assets/MC2.png", renderer);
-	map_texture = load_texture("Assets/BG4K.png", renderer);
+	//Load texture.
+	MC.texture = load_texture("Assets/Main_character/MC.png", renderer);
+	map_texture = load_texture("Assets/Background/BG.png", renderer);
+	start_button_texture = load_texture("Assets/Lobby/start.png", renderer);
+	menu_background_texture = load_texture("Assets/Lobby/Lobby_BG.png", renderer);
 
 	camera.x = MC.x - WINDOW_WIDTH / 2;
 	camera.y = MC.y - WINDOW_HEIGHT / 2;
@@ -270,14 +287,14 @@ void initialize_enemies(SDL_Renderer* renderer) {
 	type[0].movement_speed = 200;
 	type[0].health = 100;
 	type[0].atk = 10;
-	type[0].texture = load_texture("Assets/Enemy1.png", renderer);
+	type[0].texture = load_texture("Assets/Enemy/Enemy1.png", renderer);
 	
 	type[1].width = 48;
 	type[1].height = 70;
 	type[1].movement_speed = 150;
 	type[1].health = 200;
 	type[1].atk = 30;
-	type[1].texture = load_texture("Assets/Enemy2.png", renderer);
+	type[1].texture = load_texture("Assets/Enemy/Enemy2.png", renderer);
 	
 }
 
@@ -327,20 +344,12 @@ void spawn_wave(int waveIndex) {
 	}
 }
 
-void render_enemies(SDL_Renderer* renderer) {
-	for (int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
-		if (Enemies[i].isActive) {
-			
-			SDL_RenderCopy(renderer, type[Enemies[i].type].texture, NULL, &Enemies[i].rect);
-		}
-	}
-}
 
 void update_enemies(float delta_time) {
 	for (int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
 		if (Enemies[i].isActive) {
-			float dx = MC.x - (Enemies[i].rect.x + Enemies[i].rect.w / 2);
-			float dy = MC.y - (Enemies[i].rect.y + Enemies[i].rect.h / 2);
+			float dx = MC.x - (Enemies[i].rect.x - Enemies[i].rect.w / 2);
+			float dy = MC.y - (Enemies[i].rect.y - Enemies[i].rect.h / 2);
 			float distance = sqrt(dx * dx + dy * dy);
 
 			// Avoid division by zero
@@ -355,6 +364,61 @@ void update_enemies(float delta_time) {
 			// Update enemy position
 			Enemies[i].rect.x += dx_normalized * speed * delta_time;
 			Enemies[i].rect.y += dy_normalized * speed * delta_time;
+
+			  for (int j = 0; j < MAX_ENEMIES_STAGE1; ++j) {
+            if (i != j && Enemies[j].isActive) {
+                SDL_Rect rect1 = Enemies[i].rect;
+                SDL_Rect rect2 = Enemies[j].rect;
+
+                // Calculate the intersection rectangle
+                SDL_Rect intersection;
+                if (SDL_IntersectRect(&rect1, &rect2, &intersection)) {
+                    int overlapWidth = intersection.w;
+                    int overlapHeight = intersection.h;
+
+                    // Calculate 50% of each enemy's size
+                    int allowedOverlapWidth = rect1.w / 2;
+                    int allowedOverlapHeight = rect1.h / 2;
+
+                    // Check if the overlap exceeds 50% of the size
+                    if (overlapWidth > allowedOverlapWidth || overlapHeight > allowedOverlapHeight) {
+                        // Resolve the overlap by adjusting positions
+                        // This is a simple resolution strategy and may need refinement
+                        if (rect1.x < rect2.x) {
+                            Enemies[i].rect.x -= overlapWidth / 20;
+                            Enemies[j].rect.x += overlapWidth / 20;
+                        } else {
+                            Enemies[i].rect.x += overlapWidth / 20;
+                            Enemies[j].rect.x -= overlapWidth / 20;
+                        }
+
+                        if (rect1.y < rect2.y) {
+                            Enemies[i].rect.y -= overlapHeight / 20;
+                            Enemies[j].rect.y += overlapHeight / 20;
+                        } else {
+                            Enemies[i].rect.y += overlapHeight / 20;
+                            Enemies[j].rect.y -= overlapHeight / 20;
+                        }
+                    }
+                }
+            }
+        }
+		}
+	}
+}
+
+void render_enemies(SDL_Renderer* renderer) {
+	for (int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
+		if (Enemies[i].isActive) {
+
+			SDL_Rect screen_rect = {
+				Enemies[i].rect.x - (int)camera.x,
+				Enemies[i].rect.y - (int)camera.y,
+				Enemies[i].rect.w,
+				Enemies[i].rect.h
+			};
+			SDL_RenderCopy(renderer, type[Enemies[i].type].texture, NULL, &screen_rect);
+
 		}
 	}
 }
@@ -373,23 +437,25 @@ void update_camera() {
 
 void update(float delta_time) {
 
-	//Mc movement
-	if (move_up) MC.y -= MC.movement_speed * delta_time;
-	if (move_down) MC.y += MC.movement_speed * delta_time;
-	if (move_left) MC.x -= MC.movement_speed * delta_time;
-	if (move_right) MC.x += MC.movement_speed * delta_time;
+	if (!in_menu) {
+		//Mc movement
+		if (move_up) MC.y -= MC.movement_speed * delta_time;
+		if (move_down) MC.y += MC.movement_speed * delta_time;
+		if (move_left) MC.x -= MC.movement_speed * delta_time;
+		if (move_right) MC.x += MC.movement_speed * delta_time;
 
-	// Updated boundary checks for a 1920x1080 map
-	if (MC.x < 0) MC.x = 0;
-	if (MC.y < 0) MC.y = 0;
-	if (MC.x + MC.width > MAP_WIDTH) MC.x = MAP_WIDTH - MC.width; // Use 1920 for the new map width
-	if (MC.y + MC.height > MAP_HEIGHT) MC.y = MAP_HEIGHT - MC.height; // Use 1080 for the new map height
+		// Updated boundary checks for a 1920x1080 map
+		if (MC.x < 0) MC.x = 0;
+		if (MC.y < 0) MC.y = 0;
+		if (MC.x + MC.width > MAP_WIDTH) MC.x = MAP_WIDTH - MC.width; // Use 1920 for the new map width
+		if (MC.y + MC.height > MAP_HEIGHT) MC.y = MAP_HEIGHT - MC.height; // Use 1080 for the new map height
 
-	update_enemies(delta_time);
+		update_enemies(delta_time);
 
-	// Update camera position to follow the ball
-	update_camera();
-	
+		// Update camera position to follow the ball
+		update_camera();
+	}
+
 }
 
 void render_health_bar(SDL_Renderer* renderer, float health, float max_health, int x, int y, int width, int height) {
@@ -409,43 +475,55 @@ void render() {
 	SDL_SetRenderDrawColor(renderer, 34, 139, 34, 255); // Optional, depending on if your map covers the whole screen
 	SDL_RenderClear(renderer);
 
-	if (map_texture) {
-		SDL_Rect srcRect = {
-			(int)camera.x,
-			(int)camera.y,
-			camera.width,
-			camera.height
-		};
-		SDL_Rect destRect = {
-			0, 0, camera.width, camera.height
-		};
+	if (in_menu) {
 
-		// Render the visible portion of the map
-		SDL_RenderCopy(renderer, map_texture, &srcRect, &destRect);
+		SDL_Rect menu_background_rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+		SDL_RenderCopy(renderer, menu_background_texture, NULL, &menu_background_rect);
+
+		SDL_Rect start_button_rect = { 720, 450, 420, 120 };
+		SDL_RenderCopy(renderer, start_button_texture, NULL, &start_button_rect);
+
 	}
+	else {
 
-	// Render other entities like the player, enemies, etc.
-	if (MC.texture) {
-		SDL_Rect MC_rect = {
-			(int)(MC.x - camera.x), // Adjusted for camera
-			(int)(MC.y - camera.y), // Adjusted for camera
-			(int)MC.width,
-			(int)MC.height
-		};
+		if (map_texture) {
+			SDL_Rect srcRect = {
+				(int)camera.x,
+				(int)camera.y,
+				camera.width,
+				camera.height
+			};
+			SDL_Rect destRect = {
+				0, 0, camera.width, camera.height
+			};
 
-		SDL_RendererFlip flip = facing_left ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
-		SDL_RenderCopyEx(renderer, MC.texture, NULL, &MC_rect, 0, NULL, flip);
+			// Render the visible portion of the map
+			SDL_RenderCopy(renderer, map_texture, &srcRect, &destRect);
+		}
+
+		// Render other entities like the player, enemies, etc.
+		if (MC.texture) {
+			SDL_Rect MC_rect = {
+				(int)(MC.x - camera.x), // Adjusted for camera
+				(int)(MC.y - camera.y), // Adjusted for camera
+				(int)MC.width,
+				(int)MC.height
+			};
+
+			SDL_RendererFlip flip = facing_left ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+			SDL_RenderCopyEx(renderer, MC.texture, NULL, &MC_rect, 0, NULL, flip);
+		}
+
+
+		int health_bar_width = 1920;
+		int health_bar_height = 40;
+		int health_bar_x = 0; // Top left corner of the health bar
+		int health_bar_y = 0; // Adjusted to be at the bottom of the window
+		render_health_bar(renderer, MC.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
+
+		//Render enemies
+		render_enemies(renderer);
 	}
-
-
-	int health_bar_width = 1920;
-	int health_bar_height = 40;
-	int health_bar_x = 0; // Top left corner of the health bar
-	int health_bar_y = 0; // Adjusted to be at the bottom of the window
-	render_health_bar(renderer, MC.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
-
-	//Render enemies
-	render_enemies(renderer);
 
 	SDL_RenderPresent(renderer);
 }
