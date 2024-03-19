@@ -12,8 +12,8 @@
 #define FRAME_TARGET_TIME (1000 / FPS)
 
 #define MAX_WAVES 5
-#define MAX_ENEMY_TYPE 2
-#define MAX_ENEMIES_STAGE1 190
+#define MAX_ENEMY_TYPE 3
+#define MAX_ENEMIES_STAGE1 215
 //50pixel = 1 meter
 
 

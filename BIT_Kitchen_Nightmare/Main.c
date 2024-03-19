@@ -283,19 +283,28 @@ void setup() {
 
 //Each type of Enemy stat initialize
 void initialize_enemies(SDL_Renderer* renderer) {
-	type[0].width = 50;
-	type[0].height = 70;
-	type[0].movement_speed = 200;
+	type[0].width = 100;
+	type[0].height = 100;
+	type[0].movement_speed = 150;
 	type[0].health = 100;
 	type[0].atk = 10;
-	type[0].texture = load_texture("Assets/Enemy/Enemy1.png", renderer);
+	type[0].texture = load_texture("Assets/Enemy/Enemy_pig.png", renderer);
 	
-	type[1].width = 48;
-	type[1].height = 70;
+	type[1].width = 50;
+	type[1].height = 50;
 	type[1].movement_speed = 150;
 	type[1].health = 200;
 	type[1].atk = 30;
-	type[1].texture = load_texture("Assets/Enemy/Enemy2.png", renderer);
+	type[1].texture = load_texture("Assets/Enemy/Enemy_chicken.png", renderer);
+
+	//---------------------------------------
+	type[2].width = 40;
+	type[2].height = 40;
+	type[2].movement_speed = 150;
+	type[2].health = 200;
+	type[2].atk = 30;
+	type[2].texture = load_texture("Assets/Enemy/Enemy_bell_pepper.png", renderer);
+	//---------------------------------------------
 	
 }
 
@@ -304,18 +313,23 @@ void initialize_stage1_enemies() {
 
 	stage1.waves[0].Enemy_count[0] = 15; 
 	stage1.waves[0].Enemy_count[1] = 5;
+	stage1.waves[0].Enemy_count[2] = 5;
 
 	stage1.waves[1].Enemy_count[0] = 20;
 	stage1.waves[1].Enemy_count[1] = 10;
+	stage1.waves[1].Enemy_count[2] = 5;
 
 	stage1.waves[2].Enemy_count[0] = 25;
 	stage1.waves[2].Enemy_count[1] = 10;
+	stage1.waves[2].Enemy_count[2] = 5;
 
-	stage1.waves[2].Enemy_count[0] = 25;
-	stage1.waves[2].Enemy_count[1] = 20;
+	stage1.waves[3].Enemy_count[0] = 25;
+	stage1.waves[3].Enemy_count[1] = 20;
+	stage1.waves[3].Enemy_count[2] = 5;
 
 	stage1.waves[4].Enemy_count[0] = 30;
 	stage1.waves[4].Enemy_count[1] = 30;
+	stage1.waves[4].Enemy_count[2] = 5;
 
 }
 
@@ -366,44 +380,44 @@ void update_enemies(float delta_time) {
 			Enemies[i].rect.x += dx_normalized * speed * delta_time;
 			Enemies[i].rect.y += dy_normalized * speed * delta_time;
 
-			  for (int j = 0; j < MAX_ENEMIES_STAGE1; ++j) {
-            if (i != j && Enemies[j].isActive) {
-                SDL_Rect rect1 = Enemies[i].rect;
-                SDL_Rect rect2 = Enemies[j].rect;
+			for (int j = 0; j < MAX_ENEMIES_STAGE1; ++j) {
+				if (i != j && Enemies[j].isActive) {
+					SDL_Rect rect1 = Enemies[i].rect;
+					SDL_Rect rect2 = Enemies[j].rect;
 
-                // Calculate the intersection rectangle
-                SDL_Rect intersection;
-                if (SDL_IntersectRect(&rect1, &rect2, &intersection)) {
-                    int overlapWidth = intersection.w;
-                    int overlapHeight = intersection.h;
+					// Calculate the intersection rectangle
+					SDL_Rect intersection;
+					if (SDL_IntersectRect(&rect1, &rect2, &intersection)) {
+						int overlapWidth = intersection.w;
+						int overlapHeight = intersection.h;
 
-                    // Calculate 50% of each enemy's size
-                    int allowedOverlapWidth = rect1.w / 2;
-                    int allowedOverlapHeight = rect1.h / 2;
+						// Calculate 50% of each enemy's size
+						int allowedOverlapWidth = rect1.w / 2;
+						int allowedOverlapHeight = rect1.h / 2;
 
-                    // Check if the overlap exceeds 50% of the size
-                    if (overlapWidth > allowedOverlapWidth || overlapHeight > allowedOverlapHeight) {
-                        // Resolve the overlap by adjusting positions
-                        // This is a simple resolution strategy and may need refinement
-                        if (rect1.x < rect2.x) {
-                            Enemies[i].rect.x -= overlapWidth / 20;
-                            Enemies[j].rect.x += overlapWidth / 20;
-                        } else {
-                            Enemies[i].rect.x += overlapWidth / 20;
-                            Enemies[j].rect.x -= overlapWidth / 20;
-                        }
+						// Check if the overlap exceeds 50% of the size
+						if (overlapWidth > allowedOverlapWidth || overlapHeight > allowedOverlapHeight) {
+							// Resolve the overlap by adjusting positions
+							// This is a simple resolution strategy and may need refinement
+							if (rect1.x < rect2.x) {
+								Enemies[i].rect.x -= overlapWidth / 20;
+								Enemies[j].rect.x += overlapWidth / 20;
+							} else {
+								Enemies[i].rect.x += overlapWidth / 20;
+								Enemies[j].rect.x -= overlapWidth / 20;
+							}
 
-                        if (rect1.y < rect2.y) {
-                            Enemies[i].rect.y -= overlapHeight / 20;
-                            Enemies[j].rect.y += overlapHeight / 20;
-                        } else {
-                            Enemies[i].rect.y += overlapHeight / 20;
-                            Enemies[j].rect.y -= overlapHeight / 20;
-                        }
-                    }
-                }
-            }
-        }
+							if (rect1.y < rect2.y) {
+								Enemies[i].rect.y -= overlapHeight / 20;
+								Enemies[j].rect.y += overlapHeight / 20;
+							} else {
+								Enemies[i].rect.y += overlapHeight / 20;
+								Enemies[j].rect.y -= overlapHeight / 20;
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }
