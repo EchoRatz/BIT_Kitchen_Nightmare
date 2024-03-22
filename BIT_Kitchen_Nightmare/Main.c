@@ -529,15 +529,14 @@ void render() {
 			SDL_RenderCopyEx(renderer, MC.texture, NULL, &MC_rect, 0, NULL, flip);
 		}
 
+		//Render enemies
+		render_enemies(renderer);
 
 		int health_bar_width = 1920;
 		int health_bar_height = 40;
 		int health_bar_x = 0; // Top left corner of the health bar
 		int health_bar_y = 0; // Adjusted to be at the bottom of the window
 		render_health_bar(renderer, MC.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
-
-		//Render enemies
-		render_enemies(renderer);
 	}
 
 	SDL_RenderPresent(renderer);
