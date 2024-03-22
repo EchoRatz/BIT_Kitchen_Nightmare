@@ -18,6 +18,12 @@ SDL_Texture* map_texture = NULL;
 SDL_Texture* start_button_texture = NULL;
 SDL_Texture* menu_background_texture = NULL;
 
+//Pause menu
+int is_game_paused = FALSE;
+int menu_item_selected = 0;//0 for resume, 1 for exit
+SDL_Texture* resume_button_texture = NULL;
+SDL_Texture* exit_button_texture = NULL;
+
 //Time
 int last_frame_time = 0;
 float  delta_time;
@@ -115,6 +121,9 @@ void update_enemies(float delta_time);
 
 // Texture loading
 SDL_Texture* load_texture(const char* filename, SDL_Renderer* renderer);
+
+//combat mechanics
+void check_collision_and_apply_damage(float delta_time);
 
 
 // Game loop functions
@@ -222,8 +231,28 @@ void process_input() {
 			}
 		}
 
-		if (state[SDL_SCANCODE_ESCAPE]) {
-			game_is_running = FALSE;
+		if(event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
+			is_game_paused = !is_game_paused;
+		}
+
+		if (is_game_paused && event.type == SDL_MOUSEBUTTONDOWN) {
+			// Assuming these are the button positions and sizes
+			SDL_Rect resume_button_rect = { 785, 320, 350, 150 }; // Placeholder positions
+			SDL_Rect exit_button_rect = { 785, 600, 350, 150 }; // Placeholder positions
+
+			int mouseX, mouseY;
+			SDL_GetMouseState(&mouseX, &mouseY);
+
+			if (mouseX >= resume_button_rect.x && mouseX <= resume_button_rect.x + resume_button_rect.w &&
+				mouseY >= resume_button_rect.y && mouseY <= resume_button_rect.y + resume_button_rect.h) {
+				// Resume button was clicked
+				is_game_paused = FALSE;
+			}
+			else if (mouseX >= exit_button_rect.x && mouseX <= exit_button_rect.x + exit_button_rect.w &&
+				mouseY >= exit_button_rect.y && mouseY <= exit_button_rect.y + exit_button_rect.h) {
+				// Exit button was clicked
+				game_is_running = FALSE;
+			}
 		}
 	}
 
@@ -275,6 +304,8 @@ void setup() {
 	map_texture = load_texture("Assets/Background/BG.png", renderer);
 	start_button_texture = load_texture("Assets/Lobby/start.png", renderer);
 	menu_background_texture = load_texture("Assets/Lobby/Lobby_BG.png", renderer);
+	resume_button_texture = load_texture("Assets/Pause_menu/Resume_button.png", renderer);
+	exit_button_texture = load_texture("Assets/Pause_menu/Exit_button.png", renderer);
 
 	camera.x = MC.x - WINDOW_WIDTH / 2;
 	camera.y = MC.y - WINDOW_HEIGHT / 2;
@@ -438,6 +469,28 @@ void render_enemies(SDL_Renderer* renderer) {
 	}
 }
 
+void check_collision_and_apply_damage(float delta_time) {
+	// Assuming the MC's rect is set up like this
+	SDL_Rect mcRect = { MC.x, MC.y, MC.width, MC.height };
+
+	for (int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
+		if (Enemies[i].isActive) {
+			// Check for collision between MC and the active enemy
+			if (SDL_HasIntersection(&mcRect, &Enemies[i].rect)) {
+				// Collision detected, MC takes damage from enemy's attack power
+				float damage = type[Enemies[i].type].atk * delta_time;
+				MC.health -= damage;
+				if (MC.health < 0) MC.health = 0; // Prevent health from dropping below zero
+
+				// Optional: handle other effects like knockback or invincibility frames here
+
+				// Break if you want the MC to only take damage from one enemy per frame
+				// Remove the break statement if MC should take damage from all overlapping enemies
+			}
+		}
+	}
+}
+
 
 void update_camera() {
 	camera.x = MC.x - WINDOW_WIDTH / 2;
@@ -451,6 +504,9 @@ void update_camera() {
 }
 
 void update(float delta_time) {
+
+	if (is_game_paused) return;
+
 
 	if (!in_menu) {
 		//Mc movement
@@ -466,6 +522,9 @@ void update(float delta_time) {
 		if (MC.y + MC.height > MAP_HEIGHT) MC.y = MAP_HEIGHT - MC.height; // Use 1080 for the new map height
 
 		update_enemies(delta_time);
+
+		check_collision_and_apply_damage(delta_time);
+
 
 		// Update camera position to follow the ball
 		update_camera();
@@ -527,6 +586,7 @@ void render() {
 
 			SDL_RendererFlip flip = facing_left ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
 			SDL_RenderCopyEx(renderer, MC.texture, NULL, &MC_rect, 0, NULL, flip);
+
 		}
 
 		//Render enemies
@@ -537,6 +597,20 @@ void render() {
 		int health_bar_x = 0; // Top left corner of the health bar
 		int health_bar_y = 0; // Adjusted to be at the bottom of the window
 		render_health_bar(renderer, MC.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
+	}
+
+	if (is_game_paused) {
+		// Adjust position and sizes as needed
+		SDL_Rect resume_button_rect = { 785, 320, 350, 150 }; // Placeholder position
+		SDL_Rect exit_button_rect = { 785, 600, 350, 150 }; // Placeholder position
+
+		SDL_RenderCopy(renderer, resume_button_texture, NULL, &resume_button_rect);
+		SDL_RenderCopy(renderer, exit_button_texture, NULL, &exit_button_rect);
+
+		// Optionally highlight the selected menu item
+		// This part is not fully detailed in the provided snippet. You might draw a rectangle
+		// or use different textures to indicate the selected item.
+
 	}
 
 	SDL_RenderPresent(renderer);
@@ -560,6 +634,9 @@ void destroy_window() {
 	if (map_texture) {
 		SDL_DestroyTexture(map_texture);
 	}
+	SDL_DestroyTexture(resume_button_texture);
+	SDL_DestroyTexture(exit_button_texture);
+
 
 	SDL_Quit();
 }
