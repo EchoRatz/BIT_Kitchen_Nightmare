@@ -7,6 +7,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdbool.h>
 
 //Define variable
 int game_is_running = FALSE;
@@ -44,6 +45,17 @@ struct Camera {
 	int width, height;
 } camera = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
 
+//Attack system
+typedef struct {
+	SDL_Rect area; // The attack area
+	Uint32 cooldown; // Time in milliseconds between attacks
+	Uint32 lastAttackTime; // Last time this attack was used
+	SDL_Texture* vfxTexture; // Texture for the attack's visual effect
+	int damage; // Damage dealt by the attack
+	int level; // Level of the attack, influencing damage, area, etc.
+	bool isActive; // Is the attack currently active/enabled
+} AutoAttack;
+
 //Character stat
 struct character {
 	float x;
@@ -51,8 +63,9 @@ struct character {
 	float width;
 	float height;
 	float movement_speed; // Pixels per second, adjust as needed
-	float atk;
 	float health;
+	AutoAttack attacks[MAX_ATTACKS];
+	int activeAttacks; // Number of attacks currently active
 	SDL_Texture* texture;
 } MC;
 
@@ -92,7 +105,6 @@ int randPos;
 int typeTexture;
 
 
-
 //8 spawn position
 struct spawn_pos {
 	float x;
@@ -124,6 +136,10 @@ SDL_Texture* load_texture(const char* filename, SDL_Renderer* renderer);
 
 //combat mechanics
 void check_collision_and_apply_damage(float delta_time);
+void setup_attacks(void);
+void updated_attacks(Uint32 currentTime);
+void render_attack();
+void apply_attack_damage_to_enemies();
 
 
 // Game loop functions
@@ -298,6 +314,7 @@ void setup() {
 	MC.height = 97;
 	MC.movement_speed = 300.0f;
 	MC.health = 100.0f; // maximum health is 100
+	setup_attacks();
 
 	//Load texture.
 	MC.texture = load_texture("Assets/Main_character/MC.png", renderer);
@@ -464,6 +481,9 @@ void render_enemies(SDL_Renderer* renderer) {
 				Enemies[i].rect.h
 			};
 			SDL_RenderCopy(renderer, type[Enemies[i].type].texture, NULL, &screen_rect);
+			//For debug
+			SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255); // Blue for enemy hitbox
+			SDL_RenderDrawRect(renderer, &screen_rect);
 
 		}
 	}
@@ -491,6 +511,124 @@ void check_collision_and_apply_damage(float delta_time) {
 	}
 }
 
+//Attack
+void setup_attacks(void) {
+	for (int i = 0; i < MAX_ATTACKS; ++i) {
+		MC.attacks[i].isActive = false; // Initially, most attacks are inactive
+		// Initialize other fields as needed...
+	}
+
+	// Setup the first attack
+	MC.attacks[0].isActive = true;
+	MC.attacks[0].cooldown = 1000; // Example: 2 seconds
+	MC.attacks[0].lastAttackTime = 0;
+	MC.attacks[0].damage = 200; // Example damage
+	MC.attacks[0].area = (SDL_Rect){0, 0, 200, 300}; // Set size, position is dynamic
+	MC.attacks[0].vfxTexture = load_texture("Assets/Attack_VFX/Attack3.png", renderer);
+
+	MC.activeAttacks = 1; // MC starts with one active attack
+}
+
+void updated_attacks(Uint32 currentTime) {
+	if (MC.attacks[0].isActive && currentTime - MC.attacks[0].lastAttackTime >= MC.attacks[0].cooldown) {
+		// Determine the attack area's X position based on facing direction
+		if (facing_left) {
+			// Attack spawns to the left of the MC, aligning its right edge with MC's center
+			MC.attacks[0].area.x = MC.x - (MC.attacks[0].area.w - (MC.width / 2));
+		}
+		else {
+			// Attack spawns to the right of the MC, starting from MC's center
+			MC.attacks[0].area.x = MC.x + MC.width / 2;
+		}
+
+		// Vertically center the attack area relative to the MC
+		MC.attacks[0].area.y = MC.y - (MC.attacks[0].area.h - MC.height) / 2;
+
+		MC.attacks[0].lastAttackTime = currentTime;
+		// Attack logic (e.g., collision detection) goes here
+	}
+}
+
+void render_attacks() {
+
+	Uint32 currentTime = SDL_GetTicks();
+
+	//For debug------------------------------------------------------------------------ -
+	if (MC.attacks[0].isActive) {
+		// Adjust the position of the debug visual for the attack area relative to the camera
+		SDL_Rect debugAttackArea = {
+			MC.attacks[0].area.x - camera.x, // Adjust X position relative to camera
+			MC.attacks[0].area.y - camera.y, // Adjust Y position relative to camera
+			MC.attacks[0].area.w, // Width of the attack area
+			MC.attacks[0].area.h  // Height of the attack area
+		};
+
+		// Set the draw color to red for high visibility
+		SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+
+		// Draw the debug visual as a solid rectangle
+		SDL_RenderFillRect(renderer, &debugAttackArea);
+	}
+	
+
+	if (MC.attacks[0].isActive && (currentTime - MC.attacks[0].lastAttackTime <= 100)) { // Display VFX for a short duration
+		// Adjust the attack area position relative to the camera
+		SDL_Rect vfxPosition = {
+			MC.attacks[0].area.x - camera.x, // Adjust X position relative to camera
+			MC.attacks[0].area.y - camera.y, // Adjust Y position relative to camera
+			MC.attacks[0].area.w, // Width of the VFX
+			MC.attacks[0].area.h  // Height of the VFX
+		};
+
+		// Determine the flip state based on the character's facing direction
+		SDL_RendererFlip flipType = facing_left ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+
+		// Render the VFX texture within the adjusted position, with possible horizontal flip
+		SDL_RenderCopyEx(renderer, MC.attacks[0].vfxTexture, NULL, &vfxPosition, 0.0, NULL, flipType);
+
+
+	}
+
+}
+
+void apply_attack_damage_to_enemies() {
+	for (int attackIndex = 0; attackIndex < MAX_ATTACKS; ++attackIndex) {
+		AutoAttack* attack = &MC.attacks[attackIndex];
+		if (!attack->isActive) continue; // Skip inactive attacks
+
+		// Convert attack area coordinates relative to the game world
+		SDL_Rect attackArea = {
+			attack->area.x - (int)camera.x,
+			attack->area.y - (int)camera.y,
+			attack->area.w,
+			attack->area.h
+		};
+
+		for (int enemyIndex = 0; enemyIndex < MAX_ENEMIES_STAGE1; ++enemyIndex) {
+			Enemy* enemy = &Enemies[enemyIndex];
+			if (!enemy->isActive) continue; // Skip inactive enemies
+
+			// Check for intersection
+			if (SDL_HasIntersection(&attackArea, &enemy->rect)) {
+				// Apply damage
+				printf("Before applying, attack damage: %f\n", attack->damage);
+				// Example of applying damage from a specific attack to an enemy
+				enemy->currentHealth -= MC.attacks[attackIndex].damage;
+
+				printf("Applying damage: %f to enemy: %d\n", attack->damage, enemyIndex);
+
+				// Check if enemy is dead
+				if (enemy->currentHealth <= 0) {
+					enemy->isActive = 0; // Mark as inactive (dead)
+					printf("Enemy %d defeated.\n", enemyIndex);
+				}
+			}
+		}
+	}
+}
+
+
+
 
 void update_camera() {
 	camera.x = MC.x - WINDOW_WIDTH / 2;
@@ -505,30 +643,31 @@ void update_camera() {
 
 void update(float delta_time) {
 
-	if (is_game_paused) return;
+	Uint32 currentTime = SDL_GetTicks();
+
+	if (is_game_paused || in_menu) return;
+
+	// Process auto-attack trigger
+	updated_attacks(currentTime);
+	update_enemies(delta_time);
+	apply_attack_damage_to_enemies();
+	check_collision_and_apply_damage(delta_time);
+
+	//Mc movement
+	if (move_up) MC.y -= MC.movement_speed * delta_time;
+	if (move_down) MC.y += MC.movement_speed * delta_time;
+	if (move_left) MC.x -= MC.movement_speed * delta_time;
+	if (move_right) MC.x += MC.movement_speed * delta_time;
+
+	// Updated boundary checks for a 1920x1080 map
+	if (MC.x < 0) MC.x = 0;
+	if (MC.y < 0) MC.y = 0;
+	if (MC.x + MC.width > MAP_WIDTH) MC.x = MAP_WIDTH - MC.width; // Use 1920 for the new map width
+	if (MC.y + MC.height > MAP_HEIGHT) MC.y = MAP_HEIGHT - MC.height; // Use 1080 for the new map height
 
 
-	if (!in_menu) {
-		//Mc movement
-		if (move_up) MC.y -= MC.movement_speed * delta_time;
-		if (move_down) MC.y += MC.movement_speed * delta_time;
-		if (move_left) MC.x -= MC.movement_speed * delta_time;
-		if (move_right) MC.x += MC.movement_speed * delta_time;
-
-		// Updated boundary checks for a 1920x1080 map
-		if (MC.x < 0) MC.x = 0;
-		if (MC.y < 0) MC.y = 0;
-		if (MC.x + MC.width > MAP_WIDTH) MC.x = MAP_WIDTH - MC.width; // Use 1920 for the new map width
-		if (MC.y + MC.height > MAP_HEIGHT) MC.y = MAP_HEIGHT - MC.height; // Use 1080 for the new map height
-
-		update_enemies(delta_time);
-
-		check_collision_and_apply_damage(delta_time);
-
-
-		// Update camera position to follow the ball
-		update_camera();
-	}
+	// Update camera position to follow the ball
+	update_camera();
 
 }
 
@@ -591,6 +730,11 @@ void render() {
 
 		//Render enemies
 		render_enemies(renderer);
+
+		// Render the attack VFX if active and within the display window
+		render_attacks();
+		
+
 
 		int health_bar_width = 1920;
 		int health_bar_height = 40;

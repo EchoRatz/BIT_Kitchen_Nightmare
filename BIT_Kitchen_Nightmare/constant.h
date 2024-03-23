@@ -13,8 +13,8 @@
 
 #define MAX_WAVES 5
 #define MAX_ENEMY_TYPE 3
-#define MAX_ENEMIES_STAGE1 215
+#define MAX_ENEMIES_STAGE1 210
 //50pixel = 1 meter
 
-
+#define MAX_ATTACKS 6
 
