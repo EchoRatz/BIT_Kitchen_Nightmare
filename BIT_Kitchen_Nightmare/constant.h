@@ -17,4 +17,5 @@
 //50pixel = 1 meter
 
 #define MAX_ATTACKS 6
+#define ATTACK_DURATION 15
 
