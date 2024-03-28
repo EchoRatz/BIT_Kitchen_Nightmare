@@ -17,10 +17,12 @@ SDL_Renderer* renderer = NULL;
 SDL_Texture* MC_texture = NULL;
 SDL_Texture* map_texture = NULL;
 SDL_Texture* start_button_texture = NULL;
+SDL_Texture* setting_button_texture = NULL;
+SDL_Texture* collection_button_texture = NULL;
+SDL_Texture* shop_button_texture = NULL;
 SDL_Texture* menu_background_texture = NULL;
 
 //Pause menu
-int is_game_paused = FALSE;
 int menu_item_selected = 0;//0 for resume, 1 for exit
 SDL_Texture* resume_button_texture = NULL;
 SDL_Texture* exit_button_texture = NULL;
@@ -30,6 +32,7 @@ int last_frame_time = 0;
 float  delta_time;
 const Uint32 periodicInterval = 60000;
 Uint32 lastPeriodicCall = 0;
+int waveIndex = 0;
 
 //MC
 int move_up = FALSE;
@@ -121,6 +124,13 @@ struct spawn_pos {
 	{ -200, 1080},
 };
 
+enum GameState {
+	GAME_STATE_MAIN_MENU,
+	GAME_STATE_GAMEPLAY,
+	GAME_STATE_PAUSE_MENU
+};
+enum GameState gameState = GAME_STATE_MAIN_MENU;
+
 // Initialization and setup functions
 int initialize_window(void);
 void setup(void);
@@ -145,9 +155,13 @@ void apply_attack_damage_to_enemies();
 
 
 // Game loop functions
-void process_input(void);
-void update(float delta_time);
-void render(void);
+int menu_process_input(void);
+int gameplay_process_input(void);
+int pause_process_input(void);
+void gameplay_update(float delta_time);
+void menu_render(void);
+void gameplay_render(void);
+void pause_render(void);
 void update_camera(void); 
 void cap_framerate(int* last_frame_time, float* delta_time); //FPS
 
@@ -158,38 +172,64 @@ void render_health_bar(SDL_Renderer* renderer, float health, float max_health, i
 // Cleanup
 void destroy_window();
 
-int main(int argc, char *argv[]) {
-	int waveIndex = 0;
+
+int main(int argc, char* argv[]) {
+
 	printf("Game is running...\n");
+
 	game_is_running = initialize_window();
 
 	setup();
 	lastPeriodicCall = SDL_GetTicks() - periodicInterval;
 
 	while (game_is_running) {
+		switch (gameState) {
+			case GAME_STATE_MAIN_MENU:
+				
+				if(menu_process_input() == 1) gameState = GAME_STATE_GAMEPLAY;
+				menu_render();
+				
+				break;
 
-		//Wave will spawn every 1 minute.
-		Uint32 currentTime = SDL_GetTicks();
-		if (currentTime - lastPeriodicCall >= periodicInterval) {
+			case GAME_STATE_GAMEPLAY: {
 			
-			while (waveIndex <= 19) {
-				spawn_wave(waveIndex);
-				waveIndex++;
+				Uint32 currentTime = SDL_GetTicks();
+				if (gameplay_process_input() == 2) { // Indicates a request to enter pause menu
+					gameState = GAME_STATE_PAUSE_MENU;
+				}
+				else {
+					Uint32 currentTime = SDL_GetTicks();
+					if (currentTime - lastPeriodicCall >= periodicInterval) {
+						if (waveIndex <= 19) {
+							spawn_wave(waveIndex);
+							waveIndex++;
+						}
+						lastPeriodicCall += periodicInterval;
+					}
+					gameplay_update(delta_time);
+					gameplay_render();
+				}
 				break;
 			}
 
-			lastPeriodicCall += periodicInterval; // Reset the timer
+			case GAME_STATE_PAUSE_MENU: {
+				// Process pause menu input and render
+				int pauseInputResult = pause_process_input();
+				if (pauseInputResult == 1) { // Resume game
+					gameState = GAME_STATE_GAMEPLAY;
+				}
+				else if (pauseInputResult == 2) { // Exit to main menu
+					gameState = GAME_STATE_MAIN_MENU;
+				}
+				pause_render();
+				break;
+			}
 		}
 
-
-		process_input();
-		update(delta_time);
-		render();
 		cap_framerate(&last_frame_time, &delta_time);
 	}
 
-	destroy_window();
-
+	destroy_window;
 	return 0;
 }
 
@@ -232,7 +272,33 @@ int initialize_window(void) {
 	return TRUE;
 }
 
-void process_input() {
+int menu_process_input() {
+	const Uint8* state = SDL_GetKeyboardState(NULL);
+	SDL_Event event;
+
+	while (SDL_PollEvent(&event)) {
+		if (event.type == SDL_QUIT) {
+			game_is_running = FALSE;
+		}
+
+		if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
+			game_is_running = FALSE;
+		}
+
+		if (event.type == SDL_MOUSEBUTTONDOWN) {
+			int x, y;
+			SDL_GetMouseState(&x, &y);
+			if (x >= 720 && x <= 1160 && y >= 450 && y <= 670) { // If the mouse click is within the start button area
+				return 1; // Start the game
+			}
+		}
+		
+	}
+
+	return 0;
+}
+
+int gameplay_process_input() {
 	const Uint8* state = SDL_GetKeyboardState(NULL);
 	SDL_Event event;
 
@@ -243,42 +309,12 @@ void process_input() {
 	mouseY += camera.y;
 
 	while (SDL_PollEvent(&event)) {
+		
 		if (event.type == SDL_QUIT) {
 			game_is_running = FALSE;
-		}
-
-		if (in_menu) {
-			if (event.type == SDL_MOUSEBUTTONDOWN) {
-				int x, y;
-				SDL_GetMouseState(&x, &y);
-				if (x >= 720 && x <= 1160 && y >= 450 && y <= 670) { // If the mouse click is within the start button area
-					in_menu = FALSE; // Start the game
-				}
-			}
-		}
-
-		if(event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
-			is_game_paused = !is_game_paused;
-		}
-
-		if (is_game_paused && event.type == SDL_MOUSEBUTTONDOWN) {
-			// Assuming these are the button positions and sizes
-			SDL_Rect resume_button_rect = { 785, 320, 350, 150 }; // Placeholder positions
-			SDL_Rect exit_button_rect = { 785, 600, 350, 150 }; // Placeholder positions
-
-			int mouseX, mouseY;
-			SDL_GetMouseState(&mouseX, &mouseY);
-
-			if (mouseX >= resume_button_rect.x && mouseX <= resume_button_rect.x + resume_button_rect.w &&
-				mouseY >= resume_button_rect.y && mouseY <= resume_button_rect.y + resume_button_rect.h) {
-				// Resume button was clicked
-				is_game_paused = FALSE;
-			}
-			else if (mouseX >= exit_button_rect.x && mouseX <= exit_button_rect.x + exit_button_rect.w &&
-				mouseY >= exit_button_rect.y && mouseY <= exit_button_rect.y + exit_button_rect.h) {
-				// Exit button was clicked
-				game_is_running = FALSE;
-			}
+			return 0;
+		}else if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
+			return 2;
 		}
 
 		// Update facing direction based mouse direction
@@ -296,6 +332,44 @@ void process_input() {
 	move_left = state[SDL_SCANCODE_A];
 	move_right = state[SDL_SCANCODE_D];
 
+	return 1;
+}
+
+int pause_process_input() {
+	const Uint8* state = SDL_GetKeyboardState(NULL);
+	SDL_Event event;
+
+	
+
+	while (SDL_PollEvent(&event)) {
+
+		if (event.type == SDL_QUIT) {
+			game_is_running = FALSE;
+			return 0;
+		}
+
+			// Assuming these are the button positions and sizes
+			SDL_Rect resume_button_rect = { 785, 320, 350, 150 }; // Placeholder positions
+			SDL_Rect exit_button_rect = { 785, 600, 350, 150 }; // Placeholder positions
+
+			int mouseX, mouseY;
+			SDL_GetMouseState(&mouseX, &mouseY);
+
+			if (event.type == SDL_MOUSEBUTTONDOWN) {
+
+				if (mouseX >= resume_button_rect.x && mouseX <= resume_button_rect.x + resume_button_rect.w &&
+					mouseY >= resume_button_rect.y && mouseY <= resume_button_rect.y + resume_button_rect.h) {
+					// Resume button was clicked
+					return 1;
+				}else if (mouseX >= exit_button_rect.x && mouseX <= exit_button_rect.x + exit_button_rect.w &&
+					mouseY >= exit_button_rect.y && mouseY <= exit_button_rect.y + exit_button_rect.h){
+					// Exit button was clicked
+					return 2;
+						}	
+			}
+	}
+
+	return 3;
 }
 
 SDL_Texture* load_texture(const char* filename, SDL_Renderer* renderer) {
@@ -320,6 +394,7 @@ SDL_Texture* load_texture(const char* filename, SDL_Renderer* renderer) {
 }
 
 void setup() {
+
 	srand(time(NULL));
 
 	//Set up MC stat
@@ -334,7 +409,7 @@ void setup() {
 	MC.texture = load_texture("Assets/Main_character/MC.png", renderer);
 	map_texture = load_texture("Assets/Background/BG.png", renderer);
 	start_button_texture = load_texture("Assets/Lobby/start.png", renderer);
-	menu_background_texture = load_texture("Assets/Lobby/Lobby_BG.png", renderer);
+	menu_background_texture = load_texture("Assets/Lobby/main_menu_background.png", renderer);
 	resume_button_texture = load_texture("Assets/Pause_menu/Resume_button.png", renderer);
 	exit_button_texture = load_texture("Assets/Pause_menu/Exit_button.png", renderer);
 
@@ -674,11 +749,9 @@ void update_camera() {
 	if (camera.y > MAP_HEIGHT - camera.height) camera.y = MAP_HEIGHT - camera.height;
 }
 
-void update(float delta_time) {
+void gameplay_update(float delta_time) {
 
 	Uint32 currentTime = SDL_GetTicks();
-
-	if (is_game_paused || in_menu) return;
 
 	// Process auto-attack trigger
 	updated_attacks(currentTime);
@@ -718,11 +791,11 @@ void render_health_bar(SDL_Renderer* renderer, float health, float max_health, i
 	SDL_RenderFillRect(renderer, &fg_rect);
 }
 
-void render() {
-	SDL_SetRenderDrawColor(renderer, 34, 139, 34, 255); // Optional, depending on if your map covers the whole screen
+void menu_render() {
+
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Optional, depending on if your map covers the whole screen
 	SDL_RenderClear(renderer);
 
-	if (in_menu) {
 
 		SDL_Rect menu_background_rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
 		SDL_RenderCopy(renderer, menu_background_texture, NULL, &menu_background_rect);
@@ -730,8 +803,16 @@ void render() {
 		SDL_Rect start_button_rect = { 720, 450, 420, 120 };
 		SDL_RenderCopy(renderer, start_button_texture, NULL, &start_button_rect);
 
-	}
-	else {
+	
+	SDL_RenderPresent(renderer);
+
+}
+
+void gameplay_render() {
+	//SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Optional, depending on if your map covers the whole screen
+	SDL_RenderClear(renderer);
+
+	
 
 		if (map_texture) {
 			SDL_Rect srcRect = {
@@ -767,7 +848,7 @@ void render() {
 
 		// Render the attack VFX if active and within the display window
 		render_attacks();
-		
+
 
 
 		int health_bar_width = 1920;
@@ -775,21 +856,28 @@ void render() {
 		int health_bar_x = 0; // Top left corner of the health bar
 		int health_bar_y = 0; // Adjusted to be at the bottom of the window
 		render_health_bar(renderer, MC.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
-	}
 
-	if (is_game_paused) {
-		// Adjust position and sizes as needed
-		SDL_Rect resume_button_rect = { 785, 320, 350, 150 }; // Placeholder position
-		SDL_Rect exit_button_rect = { 785, 600, 350, 150 }; // Placeholder position
+	SDL_RenderPresent(renderer);
+}
 
-		SDL_RenderCopy(renderer, resume_button_texture, NULL, &resume_button_rect);
-		SDL_RenderCopy(renderer, exit_button_texture, NULL, &exit_button_rect);
+void pause_render() {
+	// Don't clear the screen with SDL_RenderClear(renderer);
+	
+   // Render a semi-transparent black rectangle over the entire screen
+	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 5);// 128 is the alpha value for semi-transparent
+	SDL_Rect rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+	SDL_RenderFillRect(renderer, &rect);
 
-		// Optionally highlight the selected menu item
-		// This part is not fully detailed in the provided snippet. You might draw a rectangle
-		// or use different textures to indicate the selected item.
+	// Render pause menu elements here (if any), such as "Resume" and "Exit" buttons
+	// Adjust position and sizes as needed
+	SDL_Rect resume_button_rect = { 785, 320, 350, 150 }; // Placeholder positions
+	SDL_Rect exit_button_rect = { 785, 600, 350, 150 }; // Placeholder positions
 
-	}
+	SDL_RenderCopy(renderer, resume_button_texture, NULL, &resume_button_rect);
+	SDL_RenderCopy(renderer, exit_button_texture, NULL, &exit_button_rect);
+
+
 
 	SDL_RenderPresent(renderer);
 }
