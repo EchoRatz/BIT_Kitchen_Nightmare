@@ -1,0 +1,2 @@
+path to .exe file
+x64 -> Release

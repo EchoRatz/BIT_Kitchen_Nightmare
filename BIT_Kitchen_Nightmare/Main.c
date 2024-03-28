@@ -137,9 +137,9 @@ SDL_Texture* load_texture(const char* filename, SDL_Renderer* renderer);
 
 //combat mechanics
 void check_collision_and_apply_damage(float delta_time);
-void setup_attacks(void);
+void initialize_attacks(void);
 void updated_attacks(Uint32 currentTime);
-void render_attack();
+void render_attacks();
 void apply_attack_damage_to_enemies();
 
 
@@ -227,6 +227,7 @@ int initialize_window(void) {
 
 	initialize_enemies(renderer);
 	initialize_stage1_enemies();
+	initialize_attacks();
 
 	return TRUE;
 }
@@ -234,6 +235,13 @@ int initialize_window(void) {
 void process_input() {
 	const Uint8* state = SDL_GetKeyboardState(NULL);
 	SDL_Event event;
+
+	int mouseX, mouseY;
+	SDL_GetMouseState(&mouseX, &mouseY);
+
+	mouseX += camera.x;
+	mouseY += camera.y;
+
 	while (SDL_PollEvent(&event)) {
 		if (event.type == SDL_QUIT) {
 			game_is_running = FALSE;
@@ -272,6 +280,14 @@ void process_input() {
 				game_is_running = FALSE;
 			}
 		}
+
+		// Update facing direction based mouse direction
+		if (mouseX > (MC.x + MC.width / 2)) {
+			facing_left = 0; // Face right
+		}
+		else {
+			facing_left = 1; // Face left
+		}
 	}
 
 	// Update movement directions based on key states
@@ -280,9 +296,6 @@ void process_input() {
 	move_left = state[SDL_SCANCODE_A];
 	move_right = state[SDL_SCANCODE_D];
 
-	// Update facing direction based on movement
-	if (move_left) facing_left = 1;
-	else if (move_right) facing_left = 0;
 }
 
 SDL_Texture* load_texture(const char* filename, SDL_Renderer* renderer) {
@@ -316,7 +329,6 @@ void setup() {
 	MC.height = 97;
 	MC.movement_speed = 300.0f;
 	MC.health = 100.0f; // maximum health is 100
-	setup_attacks();
 
 	//Load texture.
 	MC.texture = load_texture("Assets/Main_character/MC.png", renderer);
@@ -484,8 +496,8 @@ void render_enemies(SDL_Renderer* renderer) {
 			};
 			SDL_RenderCopy(renderer, type[Enemies[i].type].texture, NULL, &screen_rect);
 			//For debug
-			SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255); // Blue for enemy hitbox
-			SDL_RenderDrawRect(renderer, &screen_rect);
+			//SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255); // Blue for enemy hitbox
+			//SDL_RenderDrawRect(renderer, &screen_rect);
 
 		}
 	}
@@ -504,17 +516,13 @@ void check_collision_and_apply_damage(float delta_time) {
 				MC.health -= damage;
 				if (MC.health < 0) MC.health = 0; // Prevent health from dropping below zero
 
-				// Optional: handle other effects like knockback or invincibility frames here
-
-				// Break if you want the MC to only take damage from one enemy per frame
-				// Remove the break statement if MC should take damage from all overlapping enemies
 			}
 		}
 	}
 }
 
 //Attack
-void setup_attacks(void) {
+void initialize_attacks(void) {
 	for (int i = 0; i < MAX_ATTACKS; ++i) {
 		MC.attacks[i].isHave = false; // Initially, most attacks are inactive
 		// Initialize other fields as needed...
@@ -533,25 +541,7 @@ void setup_attacks(void) {
 }
 
 void updated_attacks(Uint32 currentTime) {
-	/*
-	if (MC.attacks[0].isActive && currentTime - MC.attacks[0].lastAttackTime >= MC.attacks[0].cooldown) {
-		// Determine the attack area's X position based on facing direction
-		if (facing_left) {
-			// Attack spawns to the left of the MC, aligning its right edge with MC's center
-			MC.attacks[0].area.x = MC.x - (MC.attacks[0].area.w - (MC.width / 2));
-		}
-		else {
-			// Attack spawns to the right of the MC, starting from MC's center
-			MC.attacks[0].area.x = MC.x + MC.width / 2;
-		}
-
-		// Vertically center the attack area relative to the MC
-		MC.attacks[0].area.y = MC.y - (MC.attacks[0].area.h - MC.height) / 2;
-
-		MC.attacks[0].lastAttackTime = currentTime;
-		// Attack logic (e.g., collision detection) goes here
-	}
-	*/
+	
 	for (int i = 0; i < MC.haveAttacks; ++i) {
 		AutoAttack* attack = &MC.attacks[i];
 		if (attack->isHave && !attack->isActive && (currentTime - attack->lastAttackTime >= attack->cooldown)) {
@@ -572,10 +562,8 @@ void updated_attacks(Uint32 currentTime) {
 			}
 
 			// Vertically center the attack area relative to the MC
-			attack->area.y = MC.y + (MC.height - attack->area.h) / 2;
+			attack->area.y = MC.y - (attack->area.h - MC.height) / 2;
 
-			// Here, you could immediately apply the attack effect or mark the attack as "needs to be processed"
-			// For auto attacks, you might want to apply damage immediately, or you might have another mechanism for this
 		}
 
 		// Optionally, deactivate the attack after a short duration
@@ -590,7 +578,7 @@ void render_attacks() {
 
 	Uint32 currentTime = SDL_GetTicks();
 
-	//For debug------------------------------------------------------------------------ -
+	/*For debug------------------------------------------------------------------------ -
 	if (MC.attacks[0].isActive && (currentTime - MC.attacks[0].lastAttackTime <= 100)) {
 		// Adjust the position of the debug visual for the attack area relative to the camera
 		SDL_Rect debugAttackArea = {
@@ -603,9 +591,10 @@ void render_attacks() {
 		// Set the draw color to red for high visibility
 		SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
 
-		// Draw the debug visual as a solid rectangle
+		//Draw the debug visual as a solid rectangle
 		SDL_RenderFillRect(renderer, &debugAttackArea);
 	}
+	*/
 	
 
 	if (MC.attacks[0].isActive && (currentTime - MC.attacks[0].lastAttackTime <= 100)) { // Display VFX for a short duration
@@ -630,52 +619,6 @@ void render_attacks() {
 
 void apply_attack_damage_to_enemies() {
 	
-	/*
-	for (int attackIndex = 0; attackIndex < MAX_ATTACKS; ++attackIndex) {
-		AutoAttack* attack = &MC.attacks[attackIndex];
-		if (!attack->isHave) continue; // Skip inactive attacks
-
-		attack->isActive = true;
-		// Convert attack area coordinates relative to the game world
-		SDL_Rect attackArea = {
-			attack->area.x - (int)camera.x,
-			attack->area.y - (int)camera.y,
-			attack->area.w,
-			attack->area.h
-		};
-
-		for (int enemyIndex = 0; enemyIndex < MAX_ENEMIES_STAGE1; ++enemyIndex) {
-			Enemy* enemy = &Enemies[enemyIndex];
-
-			SDL_Rect enemyHitbox = {
-				enemy->rect.x - (int)camera.x,
-				enemy->rect.y - (int)camera.y,
-				enemy->rect.w,
-				enemy->rect.h
-			};
-
-			if (!enemy->isActive) continue; // Skip inactive enemies
-
-			// Check for intersection
-			if (SDL_HasIntersection(&attackArea, &enemyHitbox) && attack->isActive) {
-				// Apply damage
-				printf("Before applying, attack damage: %f\n", attack->damage);
-				// Example of applying damage from a specific attack to an enemy
-				enemy->currentHealth -= MC.attacks[attackIndex].damage;
-				attack->isActive = false;
-				
-
-				printf("Applying damage: %f to enemy: %d\n", attack->damage, enemyIndex);
-
-				// Check if enemy is dead
-				if (enemy->currentHealth <= 0) {
-					enemy->isActive = 0; // Mark as inactive (dead)
-					printf("Enemy %d defeated.\n", enemyIndex);
-				}
-			}
-		}
-	}
-	*/
 	Uint32 currentTime = SDL_GetTicks();
 
 	for (int attackIndex = 0; attackIndex < MC.haveAttacks; ++attackIndex) {
@@ -713,8 +656,7 @@ void apply_attack_damage_to_enemies() {
 					// Additional logic for handling defeated enemy (e.g., scoring)
 				}
 
-				// Deactivate attack if it should only hit one enemy
-				// attack->isActive = false; // Uncomment this line if an attack should deactivate after hitting an enemy
+				
 			}
 		}
 	}
