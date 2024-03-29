@@ -14,7 +14,6 @@ int game_is_running = FALSE;
 int in_menu = TRUE;
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
-SDL_Texture* MC_texture = NULL;
 SDL_Texture* map_texture = NULL;
 SDL_Texture* start_button_texture = NULL;
 SDL_Texture* setting_button_texture = NULL;
@@ -34,13 +33,16 @@ const Uint32 periodicInterval = 60000;
 Uint32 lastPeriodicCall = 0;
 int waveIndex = 0;
 
-//MC
+//Main_character
 int move_up = FALSE;
 int move_down = FALSE;
 int move_left = FALSE;
 int move_right = FALSE;
 int facing_left = 0; // Add this global variable
 int map[MAP_HEIGHT][MAP_WIDTH];
+bool render_motion = true;
+Uint32 last_switch_time = 0; // Tracks the last time we switched textures
+
 
 //Player camera position
 struct Camera {
@@ -70,8 +72,9 @@ struct character {
 	float health;
 	AutoAttack attacks[MAX_ATTACKS];
 	int haveAttacks; // Number of attacks currently active
-	SDL_Texture* texture;
-} MC;
+	int type;
+	SDL_Texture* texture[2];
+} Main_character;
 
 //Each enemy type stat
 typedef struct {
@@ -288,7 +291,7 @@ int menu_process_input() {
 		if (event.type == SDL_MOUSEBUTTONDOWN) {
 			int x, y;
 			SDL_GetMouseState(&x, &y);
-			if (x >= 720 && x <= 1160 && y >= 450 && y <= 670) { // If the mouse click is within the start button area
+			if (x >= 780 && x <= 1140 && y >= 550 && y <= 648) { // If the mouse click is within the start button area
 				return 1; // Start the game
 			}
 		}
@@ -318,7 +321,7 @@ int gameplay_process_input() {
 		}
 
 		// Update facing direction based mouse direction
-		if (mouseX > (MC.x + MC.width / 2)) {
+		if (mouseX > (Main_character.x + Main_character.width / 2)) {
 			facing_left = 0; // Face right
 		}
 		else {
@@ -396,25 +399,49 @@ SDL_Texture* load_texture(const char* filename, SDL_Renderer* renderer) {
 void setup() {
 
 	srand(time(NULL));
+	last_switch_time = SDL_GetTicks(); // Initialize with the current time
+	
 
-	//Set up MC stat
-	MC.x = MAP_WIDTH / 2;
-	MC.y = MAP_HEIGHT / 2;
-	MC.width = 83;
-	MC.height = 97;
-	MC.movement_speed = 300.0f;
-	MC.health = 100.0f; // maximum health is 100
+
+	//Set up Main_character stat
+	Main_character.x = MAP_WIDTH / 2;
+	Main_character.y = MAP_HEIGHT / 2;
+	Main_character.width = 90;
+	Main_character.height = 90;
+	Main_character.movement_speed = 300.0f;
+	Main_character.health = 100.0f; // maximum health is 100
+	Main_character.type = 1; // Boy or girl
 
 	//Load texture.
-	MC.texture = load_texture("Assets/Main_character/MC.png", renderer);
-	map_texture = load_texture("Assets/Background/BG.png", renderer);
-	start_button_texture = load_texture("Assets/Lobby/start.png", renderer);
+	if (Main_character.type == 1) {
+
+		Main_character.texture[0] = load_texture("Assets/Main_character/Female_chef_1.png", renderer);
+		Main_character.texture[1] = load_texture("Assets/Main_character/Female_chef_2.png", renderer);
+
+	}
+	else {
+
+		Main_character.texture[0] = load_texture("Assets/Main_character/Male_chef_1.png", renderer);
+		Main_character.texture[1] = load_texture("Assets/Main_character/Male_chef_2.png", renderer);
+
+	}
+	
+
+	map_texture = load_texture("Assets/Map/Map1.png", renderer);
+
+	//Lobby
+	start_button_texture = load_texture("Assets/Lobby/Button1-Play.png", renderer);
+	setting_button_texture = load_texture("Assets/Lobby/Button2-Setting.png", renderer);
+	collection_button_texture = load_texture("Assets/Lobby/Button3-Collection.png", renderer);
+	shop_button_texture = load_texture("Assets/Lobby/Button4-Shop.png", renderer);
 	menu_background_texture = load_texture("Assets/Lobby/main_menu_background.png", renderer);
+
+	//Pasue menu
 	resume_button_texture = load_texture("Assets/Pause_menu/Resume_button.png", renderer);
 	exit_button_texture = load_texture("Assets/Pause_menu/Exit_button.png", renderer);
 
-	camera.x = MC.x - WINDOW_WIDTH / 2;
-	camera.y = MC.y - WINDOW_HEIGHT / 2;
+	camera.x = Main_character.x - WINDOW_WIDTH / 2;
+	camera.y = Main_character.y - WINDOW_HEIGHT / 2;
 
 }
 
@@ -500,8 +527,8 @@ void spawn_wave(int waveIndex) {
 void update_enemies(float delta_time) {
 	for (int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
 		if (Enemies[i].isActive) {
-			float dx = MC.x - (Enemies[i].rect.x - Enemies[i].rect.w / 2);
-			float dy = MC.y - (Enemies[i].rect.y - Enemies[i].rect.h / 2);
+			float dx = Main_character.x - (Enemies[i].rect.x - Enemies[i].rect.w / 2);
+			float dy = Main_character.y - (Enemies[i].rect.y - Enemies[i].rect.h / 2);
 			float distance = sqrt(dx * dx + dy * dy);
 
 			// Avoid division by zero
@@ -579,17 +606,17 @@ void render_enemies(SDL_Renderer* renderer) {
 }
 
 void check_collision_and_apply_damage(float delta_time) {
-	// Assuming the MC's rect is set up like this
-	SDL_Rect mcRect = { MC.x, MC.y, MC.width, MC.height };
+	// Assuming the Main_character's rect is set up like this
+	SDL_Rect Main_characterRect = { Main_character.x, Main_character.y, Main_character.width, Main_character.height };
 
 	for (int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
 		if (Enemies[i].isActive) {
-			// Check for collision between MC and the active enemy
-			if (SDL_HasIntersection(&mcRect, &Enemies[i].rect)) {
-				// Collision detected, MC takes damage from enemy's attack power
+			// Check for collision between Main_character and the active enemy
+			if (SDL_HasIntersection(&Main_characterRect, &Enemies[i].rect)) {
+				// Collision detected, Main_character takes damage from enemy's attack power
 				float damage = type[Enemies[i].type].atk * delta_time;
-				MC.health -= damage;
-				if (MC.health < 0) MC.health = 0; // Prevent health from dropping below zero
+				Main_character.health -= damage;
+				if (Main_character.health < 0) Main_character.health = 0; // Prevent health from dropping below zero
 
 			}
 		}
@@ -599,26 +626,26 @@ void check_collision_and_apply_damage(float delta_time) {
 //Attack
 void initialize_attacks(void) {
 	for (int i = 0; i < MAX_ATTACKS; ++i) {
-		MC.attacks[i].isHave = false; // Initially, most attacks are inactive
+		Main_character.attacks[i].isHave = false; // Initially, most attacks are inactive
 		// Initialize other fields as needed...
 	}
 
 	// Setup the first attack
-	MC.attacks[0].isActive = false;
-	MC.attacks[0].isHave = true;
-	MC.attacks[0].cooldown = 2000; // Example: 2 seconds
-	MC.attacks[0].lastAttackTime = 0;
-	MC.attacks[0].damage = 50; // Example damage
-	MC.attacks[0].area = (SDL_Rect){0, 0, 200, 300}; // Set size, position is dynamic
-	MC.attacks[0].vfxTexture = load_texture("Assets/Attack_VFX/Attack3.png", renderer);
+	Main_character.attacks[0].isActive = false;
+	Main_character.attacks[0].isHave = true;
+	Main_character.attacks[0].cooldown = 2000; // Example: 2 seconds
+	Main_character.attacks[0].lastAttackTime = 0;
+	Main_character.attacks[0].damage = 50; // Example damage
+	Main_character.attacks[0].area = (SDL_Rect){0, 0, 200, 300}; // Set size, position is dynamic
+	Main_character.attacks[0].vfxTexture = load_texture("Assets/Attack_VFX/Attack3.png", renderer);
 
-	MC.haveAttacks = 1; // MC starts with one active attack
+	Main_character.haveAttacks = 1; // Main_character starts with one active attack
 }
 
 void updated_attacks(Uint32 currentTime) {
 	
-	for (int i = 0; i < MC.haveAttacks; ++i) {
-		AutoAttack* attack = &MC.attacks[i];
+	for (int i = 0; i < Main_character.haveAttacks; ++i) {
+		AutoAttack* attack = &Main_character.attacks[i];
 		if (attack->isHave && !attack->isActive && (currentTime - attack->lastAttackTime >= attack->cooldown)) {
 			// Set the attack as active
 			attack->isActive = true;
@@ -628,16 +655,16 @@ void updated_attacks(Uint32 currentTime) {
 
 			// Determine the attack area's X position based on facing direction
 			if (facing_left) {
-				// Attack spawns to the left of the MC, aligning its right edge with MC's center
-				attack->area.x = MC.x - (attack->area.w - (MC.width / 2));
+				// Attack spawns to the left of the Main_character, aligning its right edge with Main_character's center
+				attack->area.x = Main_character.x - (attack->area.w - (Main_character.width / 2));
 			}
 			else {
-				// Attack spawns to the right of the MC, starting from MC's center
-				attack->area.x = MC.x + (MC.width / 2);
+				// Attack spawns to the right of the Main_character, starting from Main_character's center
+				attack->area.x = Main_character.x + (Main_character.width / 2);
 			}
 
-			// Vertically center the attack area relative to the MC
-			attack->area.y = MC.y - (attack->area.h - MC.height) / 2;
+			// Vertically center the attack area relative to the Main_character
+			attack->area.y = Main_character.y - (attack->area.h - Main_character.height) / 2;
 
 		}
 
@@ -654,13 +681,13 @@ void render_attacks() {
 	Uint32 currentTime = SDL_GetTicks();
 
 	/*For debug------------------------------------------------------------------------ -
-	if (MC.attacks[0].isActive && (currentTime - MC.attacks[0].lastAttackTime <= 100)) {
+	if (Main_character.attacks[0].isActive && (currentTime - Main_character.attacks[0].lastAttackTime <= 100)) {
 		// Adjust the position of the debug visual for the attack area relative to the camera
 		SDL_Rect debugAttackArea = {
-			MC.attacks[0].area.x - camera.x, // Adjust X position relative to camera
-			MC.attacks[0].area.y - camera.y, // Adjust Y position relative to camera
-			MC.attacks[0].area.w, // Width of the attack area
-			MC.attacks[0].area.h  // Height of the attack area
+			Main_character.attacks[0].area.x - camera.x, // Adjust X position relative to camera
+			Main_character.attacks[0].area.y - camera.y, // Adjust Y position relative to camera
+			Main_character.attacks[0].area.w, // Width of the attack area
+			Main_character.attacks[0].area.h  // Height of the attack area
 		};
 
 		// Set the draw color to red for high visibility
@@ -672,20 +699,20 @@ void render_attacks() {
 	*/
 	
 
-	if (MC.attacks[0].isActive && (currentTime - MC.attacks[0].lastAttackTime <= 100)) { // Display VFX for a short duration
+	if (Main_character.attacks[0].isActive && (currentTime - Main_character.attacks[0].lastAttackTime <= 100)) { // Display VFX for a short duration
 		// Adjust the attack area position relative to the camera
 		SDL_Rect vfxPosition = {
-			MC.attacks[0].area.x - camera.x, // Adjust X position relative to camera
-			MC.attacks[0].area.y - camera.y, // Adjust Y position relative to camera
-			MC.attacks[0].area.w, // Width of the VFX
-			MC.attacks[0].area.h  // Height of the VFX
+			Main_character.attacks[0].area.x - camera.x, // Adjust X position relative to camera
+			Main_character.attacks[0].area.y - camera.y, // Adjust Y position relative to camera
+			Main_character.attacks[0].area.w, // Width of the VFX
+			Main_character.attacks[0].area.h  // Height of the VFX
 		};
 
 		// Determine the flip state based on the character's facing direction
 		SDL_RendererFlip flipType = facing_left ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
 
 		// Render the VFX texture within the adjusted position, with possible horizontal flip
-		SDL_RenderCopyEx(renderer, MC.attacks[0].vfxTexture, NULL, &vfxPosition, 0.0, NULL, flipType);
+		SDL_RenderCopyEx(renderer, Main_character.attacks[0].vfxTexture, NULL, &vfxPosition, 0.0, NULL, flipType);
 
 
 	}
@@ -696,8 +723,8 @@ void apply_attack_damage_to_enemies() {
 	
 	Uint32 currentTime = SDL_GetTicks();
 
-	for (int attackIndex = 0; attackIndex < MC.haveAttacks; ++attackIndex) {
-		AutoAttack* attack = &MC.attacks[attackIndex];
+	for (int attackIndex = 0; attackIndex < Main_character.haveAttacks; ++attackIndex) {
+		AutoAttack* attack = &Main_character.attacks[attackIndex];
 
 		// Skip if the attack is not active or the character doesn't have this attack
 		if (!attack->isHave || !attack->isActive) {
@@ -739,8 +766,8 @@ void apply_attack_damage_to_enemies() {
 
 
 void update_camera() {
-	camera.x = MC.x - WINDOW_WIDTH / 2;
-	camera.y = MC.y - WINDOW_HEIGHT / 2;
+	camera.x = Main_character.x - WINDOW_WIDTH / 2;
+	camera.y = Main_character.y - WINDOW_HEIGHT / 2;
 
 	// Clamp camera to the edges of the map
 	if (camera.x < 0) camera.x = 0;
@@ -760,17 +787,17 @@ void gameplay_update(float delta_time) {
 	apply_attack_damage_to_enemies();
 	check_collision_and_apply_damage(delta_time);
 
-	//Mc movement
-	if (move_up) MC.y -= MC.movement_speed * delta_time;
-	if (move_down) MC.y += MC.movement_speed * delta_time;
-	if (move_left) MC.x -= MC.movement_speed * delta_time;
-	if (move_right) MC.x += MC.movement_speed * delta_time;
+	//Main_character movement
+	if (move_up) Main_character.y -= Main_character.movement_speed * delta_time;
+	if (move_down) Main_character.y += Main_character.movement_speed * delta_time;
+	if (move_left) Main_character.x -= Main_character.movement_speed * delta_time;
+	if (move_right) Main_character.x += Main_character.movement_speed * delta_time;
 
 	// Updated boundary checks for a 1920x1080 map
-	if (MC.x < 0) MC.x = 0;
-	if (MC.y < 0) MC.y = 0;
-	if (MC.x + MC.width > MAP_WIDTH) MC.x = MAP_WIDTH - MC.width; // Use 1920 for the new map width
-	if (MC.y + MC.height > MAP_HEIGHT) MC.y = MAP_HEIGHT - MC.height; // Use 1080 for the new map height
+	if (Main_character.x < 0) Main_character.x = 0;
+	if (Main_character.y < 0) Main_character.y = 0;
+	if (Main_character.x + Main_character.width > MAP_WIDTH) Main_character.x = MAP_WIDTH - Main_character.width; // Use 1920 for the new map width
+	if (Main_character.y + Main_character.height > MAP_HEIGHT) Main_character.y = MAP_HEIGHT - Main_character.height; // Use 1080 for the new map height
 
 
 	// Update camera position to follow the ball
@@ -800,8 +827,17 @@ void menu_render() {
 		SDL_Rect menu_background_rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
 		SDL_RenderCopy(renderer, menu_background_texture, NULL, &menu_background_rect);
 
-		SDL_Rect start_button_rect = { 720, 450, 420, 120 };
+		SDL_Rect start_button_rect = { 780, 550, 360, 98 };
 		SDL_RenderCopy(renderer, start_button_texture, NULL, &start_button_rect);
+
+		SDL_Rect setting_button_rect = { 784, 675, 353, 88 };
+		SDL_RenderCopy(renderer, setting_button_texture, NULL, &setting_button_rect);
+
+		SDL_Rect collection_button_rect = { 784, 788, 353, 88 };
+		SDL_RenderCopy(renderer, collection_button_texture, NULL, &collection_button_rect);
+
+		SDL_Rect shop_button_rect = { 784, 901, 353, 88 };
+		SDL_RenderCopy(renderer, shop_button_texture, NULL, &shop_button_rect);
 
 	
 	SDL_RenderPresent(renderer);
@@ -809,7 +845,7 @@ void menu_render() {
 }
 
 void gameplay_render() {
-	//SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Optional, depending on if your map covers the whole screen
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Optional, depending on if your map covers the whole screen
 	SDL_RenderClear(renderer);
 
 	
@@ -829,19 +865,24 @@ void gameplay_render() {
 			SDL_RenderCopy(renderer, map_texture, &srcRect, &destRect);
 		}
 
-		// Render other entities like the player, enemies, etc.
-		if (MC.texture) {
-			SDL_Rect MC_rect = {
-				(int)(MC.x - camera.x), // Adjusted for camera
-				(int)(MC.y - camera.y), // Adjusted for camera
-				(int)MC.width,
-				(int)MC.height
-			};
-
-			SDL_RendererFlip flip = facing_left ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
-			SDL_RenderCopyEx(renderer, MC.texture, NULL, &MC_rect, 0, NULL, flip);
-
+		Uint32 current_time = SDL_GetTicks();
+		if (current_time - last_switch_time >= 250) { // Check if 0.5 seconds have passed
+			render_motion = !render_motion; // Toggle the motion flag
+			last_switch_time = current_time; // Reset the switch time
 		}
+
+		// Decide which texture to use based on render_motion
+		SDL_Texture* texture_to_render = render_motion ? Main_character.texture[0] : Main_character.texture[1];
+
+		SDL_Rect Main_character_rect = {
+			(int)(Main_character.x - camera.x),
+			(int)(Main_character.y - camera.y),
+			(int)Main_character.width,
+			(int)Main_character.height
+		};
+		SDL_RendererFlip flip = facing_left ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+		SDL_RenderCopyEx(renderer, texture_to_render, NULL, &Main_character_rect, 0, NULL, flip);
+
 
 		//Render enemies
 		render_enemies(renderer);
@@ -855,7 +896,7 @@ void gameplay_render() {
 		int health_bar_height = 40;
 		int health_bar_x = 0; // Top left corner of the health bar
 		int health_bar_y = 0; // Adjusted to be at the bottom of the window
-		render_health_bar(renderer, MC.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
+		render_health_bar(renderer, Main_character.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
 
 	SDL_RenderPresent(renderer);
 }
