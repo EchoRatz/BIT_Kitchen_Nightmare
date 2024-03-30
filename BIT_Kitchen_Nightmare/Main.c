@@ -70,6 +70,7 @@ typedef struct {
 	int damage; // Damage dealt by the attack
 	int level; // Level of the attack, influencing damage, area, etc.
 	bool isActive;
+	bool isRender;// Is the attack currently active/enabled
 >>>>>>> 94da9f413812297256c5d182325d70d99ea7c298
 	bool isHave;
 } AutoAttack;
