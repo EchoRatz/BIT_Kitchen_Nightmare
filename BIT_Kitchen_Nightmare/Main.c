@@ -4,6 +4,7 @@
 #include "./constant.h"
 #include "SDL_image.h"
 #include "SDL_main.h"
+#include "AudioManager.h"
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
@@ -182,10 +183,26 @@ int main(int argc, char* argv[]) {
 
 	game_is_running = initialize_window();
 
+	if(SDL_Init(SDL_INIT_AUDIO) < 0) {
+		printf("SDL Audio could not initialize! SDL Audio Error: %s\n", SDL_GetError());
+	}
+
+	//Initialize the audio system
+	AudioManager_Init();
+
+	int MusicWasPaused = 0; //Keep track of the music state
+
 	setup();
 	lastPeriodicCall = SDL_GetTicks() - periodicInterval;
 
+	//Load and play background music
+	if (AudioManager_LoadMusic("Assets/Background Musics/Demo2.mp3")) {
+		AudioManager_PlayMusic();
+	}
+	
+
 	while (game_is_running) {
+
 		switch (gameState) {
 			case GAME_STATE_MAIN_MENU:
 				
@@ -195,10 +212,14 @@ int main(int argc, char* argv[]) {
 				break;
 
 			case GAME_STATE_GAMEPLAY: {
+
+				
 			
 				Uint32 currentTime = SDL_GetTicks();
 				if (gameplay_process_input() == 2) { // Indicates a request to enter pause menu
 					gameState = GAME_STATE_PAUSE_MENU;
+					AudioManager_PauseMusic(); //Pause the music
+					MusicWasPaused = 1; //Keep track of the music state
 				}
 				else {
 					Uint32 currentTime = SDL_GetTicks();
@@ -220,9 +241,13 @@ int main(int argc, char* argv[]) {
 				int pauseInputResult = pause_process_input();
 				if (pauseInputResult == 1) { // Resume game
 					gameState = GAME_STATE_GAMEPLAY;
+					if(MusicWasPaused == 1){
+						AudioManager_ResumeMusic(); // Resume the music
+					}
 				}
 				else if (pauseInputResult == 2) { // Exit to main menu
 					gameState = GAME_STATE_MAIN_MENU;
+					AudioManager_StopMusic(); // Stop the music
 				}
 				pause_render();
 				break;
@@ -944,6 +969,6 @@ void destroy_window() {
 	SDL_DestroyTexture(resume_button_texture);
 	SDL_DestroyTexture(exit_button_texture);
 
-
+	AudioManager_Cleanup();
 	SDL_Quit();
 }
