@@ -11,7 +11,6 @@
 
 //Define variable
 int game_is_running = FALSE;
-int in_menu = TRUE;
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 SDL_Texture* map_texture = NULL;
@@ -22,7 +21,6 @@ SDL_Texture* shop_button_texture = NULL;
 SDL_Texture* menu_background_texture = NULL;
 
 //Pause menu
-int menu_item_selected = 0;//0 for resume, 1 for exit
 SDL_Texture* resume_button_texture = NULL;
 SDL_Texture* exit_button_texture = NULL;
 
@@ -55,10 +53,12 @@ typedef struct {
 	SDL_Rect area; // The attack area
 	Uint32 cooldown; // Time in milliseconds between attacks
 	Uint32 lastAttackTime; // Last time this attack was used
+	Uint32 lastTimeRender;
 	SDL_Texture* vfxTexture; // Texture for the attack's visual effect
 	int damage; // Damage dealt by the attack
 	int level; // Level of the attack, influencing damage, area, etc.
 	bool isActive;// Is the attack currently active/enabled
+	bool isRender;
 	bool isHave;
 } AutoAttack;
 
@@ -136,7 +136,9 @@ enum GameState gameState = GAME_STATE_MAIN_MENU;
 
 // Initialization and setup functions
 int initialize_window(void);
+void gameplay_setup(void);
 void setup(void);
+void reset_game_state(void);                                                 
 
 //Enemies function related
 void initialize_enemies(SDL_Renderer* renderer);
@@ -222,6 +224,7 @@ int main(int argc, char* argv[]) {
 					gameState = GAME_STATE_GAMEPLAY;
 				}
 				else if (pauseInputResult == 2) { // Exit to main menu
+					reset_game_state();
 					gameState = GAME_STATE_MAIN_MENU;
 				}
 				pause_render();
@@ -401,7 +404,23 @@ void setup() {
 	srand(time(NULL));
 	last_switch_time = SDL_GetTicks(); // Initialize with the current time
 	
+	//Lobby
+	start_button_texture = load_texture("Assets/Lobby/Button1-Play.png", renderer);
+	setting_button_texture = load_texture("Assets/Lobby/Button2-Setting.png", renderer);
+	collection_button_texture = load_texture("Assets/Lobby/Button3-Collection.png", renderer);
+	shop_button_texture = load_texture("Assets/Lobby/Button4-Shop.png", renderer);
+	menu_background_texture = load_texture("Assets/Lobby/main_menu_background.png", renderer);
 
+	//Pasue menu
+	resume_button_texture = load_texture("Assets/Pause_menu/Resume_button.png", renderer);
+	exit_button_texture = load_texture("Assets/Pause_menu/Exit_button.png", renderer);
+
+	gameplay_setup();
+
+	
+}
+
+void gameplay_setup() {
 
 	//Set up Main_character stat
 	Main_character.x = MAP_WIDTH / 2;
@@ -425,24 +444,41 @@ void setup() {
 		Main_character.texture[1] = load_texture("Assets/Main_character/Male_chef_2.png", renderer);
 
 	}
-	
+
 
 	map_texture = load_texture("Assets/Map/Map1.png", renderer);
 
-	//Lobby
-	start_button_texture = load_texture("Assets/Lobby/Button1-Play.png", renderer);
-	setting_button_texture = load_texture("Assets/Lobby/Button2-Setting.png", renderer);
-	collection_button_texture = load_texture("Assets/Lobby/Button3-Collection.png", renderer);
-	shop_button_texture = load_texture("Assets/Lobby/Button4-Shop.png", renderer);
-	menu_background_texture = load_texture("Assets/Lobby/main_menu_background.png", renderer);
-
-	//Pasue menu
-	resume_button_texture = load_texture("Assets/Pause_menu/Resume_button.png", renderer);
-	exit_button_texture = load_texture("Assets/Pause_menu/Exit_button.png", renderer);
-
 	camera.x = Main_character.x - WINDOW_WIDTH / 2;
 	camera.y = Main_character.y - WINDOW_HEIGHT / 2;
+}
 
+void reset_game_state() {
+
+	last_frame_time = 0;
+	delta_time = 0.0f;
+	lastPeriodicCall = SDL_GetTicks() - periodicInterval;
+	waveIndex = 0;
+
+	// Reset player state
+	move_up = FALSE;
+	move_down = FALSE;
+	move_left = FALSE;
+	move_right = FALSE;
+	facing_left = 0;
+	render_motion = true;
+	last_switch_time = 0;
+
+	// Reset enemies, stages, and attacks
+	// Make sure to properly deallocate any dynamic memory if necessary before resetting
+
+	for(int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
+		// Free any dynamically allocated memory (if any) here
+		// For example, if Enemies[i].name is a dynamically allocated string:
+		// free(Enemies[i].name);
+
+		memset(&Enemies[i], 0, sizeof(Enemies[i]));
+	}
+	gameplay_setup();
 }
 
 //Each type of Enemy stat initialize
@@ -632,9 +668,11 @@ void initialize_attacks(void) {
 
 	// Setup the first attack
 	Main_character.attacks[0].isActive = false;
+	Main_character.attacks[0].isRender = false;
 	Main_character.attacks[0].isHave = true;
 	Main_character.attacks[0].cooldown = 2000; // Example: 2 seconds
 	Main_character.attacks[0].lastAttackTime = 0;
+	Main_character.attacks[0].lastTimeRender = 0;
 	Main_character.attacks[0].damage = 50; // Example damage
 	Main_character.attacks[0].area = (SDL_Rect){0, 0, 200, 300}; // Set size, position is dynamic
 	Main_character.attacks[0].vfxTexture = load_texture("Assets/Attack_VFX/Attack3.png", renderer);
@@ -649,6 +687,7 @@ void updated_attacks(Uint32 currentTime) {
 		if (attack->isHave && !attack->isActive && (currentTime - attack->lastAttackTime >= attack->cooldown)) {
 			// Set the attack as active
 			attack->isActive = true;
+			attack->isRender = true;
 
 			// Record the current time as the last attack time
 			attack->lastAttackTime = currentTime;
@@ -672,6 +711,9 @@ void updated_attacks(Uint32 currentTime) {
 		// This is useful if your attack should "expire" even if it hasn't hit anything
 		if (attack->isActive && (currentTime - attack->lastAttackTime > ATTACK_DURATION)) {
 			attack->isActive = false;
+		}
+		if (currentTime - attack->lastAttackTime > RENDER_DURATION) {
+			attack->isRender = false;
 		}
 	}
 }
@@ -699,7 +741,7 @@ void render_attacks() {
 	*/
 	
 
-	if (Main_character.attacks[0].isActive && (currentTime - Main_character.attacks[0].lastAttackTime <= 100)) { // Display VFX for a short duration
+	if (Main_character.attacks[0].isRender && (currentTime - Main_character.attacks[0].lastAttackTime <= 200)) { // Display VFX for a short duration
 		// Adjust the attack area position relative to the camera
 		SDL_Rect vfxPosition = {
 			Main_character.attacks[0].area.x - camera.x, // Adjust X position relative to camera
