@@ -55,11 +55,13 @@ struct Camera {
 typedef struct {
 	SDL_Rect area; // The attack area
 	Uint32 cooldown; // Time in milliseconds between attacks
-	Uint32 lastAttackTime; // Last time this attack was used
+	Uint32 lastAttackTime;
+	Uint32 renderTime;// Last time this attack was used
 	SDL_Texture* vfxTexture; // Texture for the attack's visual effect
 	int damage; // Damage dealt by the attack
 	int level; // Level of the attack, influencing damage, area, etc.
-	bool isActive;// Is the attack currently active/enabled
+	bool isActive;
+	bool isRender;// Is the attack currently active/enabled
 	bool isHave;
 } AutoAttack;
 
