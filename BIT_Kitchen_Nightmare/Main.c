@@ -20,6 +20,9 @@ SDL_Texture* setting_button_texture = NULL;
 SDL_Texture* collection_button_texture = NULL;
 SDL_Texture* shop_button_texture = NULL;
 SDL_Texture* menu_background_texture = NULL;
+SDL_Texture* win_background_texture = NULL;
+SDL_Texture* lose_background_texture = NULL;
+SDL_Texture* return_button_texture = NULL;
 
 //Pause menu
 SDL_Texture* resume_button_texture = NULL;
@@ -111,6 +114,7 @@ Stage stage1;
 Enemy Enemies[MAX_ENEMIES_STAGE1];
 int randPos;
 int typeTexture;
+int killed_enemy;
 
 
 //8 spawn position
@@ -131,7 +135,9 @@ struct spawn_pos {
 enum GameState {
 	GAME_STATE_MAIN_MENU,
 	GAME_STATE_GAMEPLAY,
-	GAME_STATE_PAUSE_MENU
+	GAME_STATE_PAUSE_MENU,
+	GAME_STATE_WIN,
+	GAME_STATE_LOSE
 };
 enum GameState gameState = GAME_STATE_MAIN_MENU;
 
@@ -167,6 +173,10 @@ int pause_process_input(void);
 void gameplay_update(float delta_time);
 void menu_render(void);
 void gameplay_render(void);
+int game_lose_process_input(void);
+void game_lose_state_render(void);
+int game_win_process_input(void);
+void game_win_state_render(void);
 void pause_render(void);
 void update_camera(void); 
 void cap_framerate(int* last_frame_time, float* delta_time); //FPS
@@ -204,6 +214,7 @@ int main(int argc, char* argv[]) {
 	while (game_is_running) {
 
 		switch (gameState) {
+
 			case GAME_STATE_MAIN_MENU:
 				
 				if(menu_process_input() == 1) gameState = GAME_STATE_GAMEPLAY;
@@ -213,8 +224,6 @@ int main(int argc, char* argv[]) {
 
 			case GAME_STATE_GAMEPLAY: {
 
-				
-			
 				Uint32 currentTime = SDL_GetTicks();
 				if (gameplay_process_input() == 2) { // Indicates a request to enter pause menu
 					gameState = GAME_STATE_PAUSE_MENU;
@@ -235,6 +244,26 @@ int main(int argc, char* argv[]) {
 				}
 				break;
 			}
+
+			case GAME_STATE_LOSE:
+					
+				if (game_lose_process_input() == 1) {
+					reset_game_state();
+					gameState = GAME_STATE_MAIN_MENU;
+					}
+				game_lose_state_render();
+
+				break;
+
+			case GAME_STATE_WIN:
+
+				if (game_win_process_input() == 1) {
+					reset_game_state();
+					gameState = GAME_STATE_MAIN_MENU;
+				}
+				game_win_state_render();
+
+				break;
 
 			case GAME_STATE_PAUSE_MENU: {
 				// Process pause menu input and render
@@ -366,6 +395,56 @@ int gameplay_process_input() {
 	return 1;
 }
 
+int game_lose_process_input() {
+
+	const Uint8* state = SDL_GetKeyboardState(NULL);
+	SDL_Event event;
+
+	while (SDL_PollEvent(&event)) {
+		if (event.type == SDL_QUIT) {
+			game_is_running = FALSE;
+		}
+
+		if (event.type == SDL_MOUSEBUTTONDOWN) {
+			int x, y;
+			SDL_GetMouseState(&x, &y);
+			if (x >= 1560 && x <= 1760 && y >= 680 && y <= 880) { // If the mouse click is within the start button area
+				return 1; // Start the game
+			}
+		}
+
+	}
+
+	return 0;
+
+}
+
+int game_win_process_input() {
+
+	const Uint8* state = SDL_GetKeyboardState(NULL);
+	SDL_Event event;
+
+	while (SDL_PollEvent(&event)) {
+		if (event.type == SDL_QUIT) {
+			game_is_running = FALSE;
+		}
+
+		if (event.type == SDL_MOUSEBUTTONDOWN) {
+			int x, y;
+			SDL_GetMouseState(&x, &y);
+			if (x >= 1560 && x <= 1760 && y >= 680 && y <= 880) { // If the mouse click is within the start button area
+				return 1; // Start the game
+			}
+		}
+
+	}
+
+	return 0;
+
+
+}
+
+
 int pause_process_input() {
 	const Uint8* state = SDL_GetKeyboardState(NULL);
 	SDL_Event event;
@@ -440,9 +519,12 @@ void setup() {
 	resume_button_texture = load_texture("Assets/Pause_menu/Resume_button.png", renderer);
 	exit_button_texture = load_texture("Assets/Pause_menu/Exit_button.png", renderer);
 
-	gameplay_setup();
+	//Result
+	win_background_texture = load_texture("Assets/Result/Win.png", renderer);
+	lose_background_texture = load_texture("Assets/Result/Lose.png", renderer);
+	return_button_texture = load_texture("Assets/Result/Home.png", renderer);
 
-	
+	gameplay_setup();
 }
 
 void gameplay_setup() {
@@ -679,6 +761,10 @@ void check_collision_and_apply_damage(float delta_time) {
 				Main_character.health -= damage;
 				if (Main_character.health < 0) Main_character.health = 0; // Prevent health from dropping below zero
 
+				if (Main_character.health == 0) {
+					gameState = GAME_STATE_LOSE;
+				}
+
 			}
 		}
 	}
@@ -823,6 +909,10 @@ void apply_attack_damage_to_enemies() {
 				if (enemy->currentHealth <= 0) {
 					enemy->isActive = false; // Enemy defeated
 					// Additional logic for handling defeated enemy (e.g., scoring)
+					killed_enemy++;
+					if (killed_enemy == MAX_ENEMIES_STAGE1) {
+						gameState = GAME_STATE_WIN;
+					}
 				}
 
 				
@@ -964,6 +1054,28 @@ void gameplay_render() {
 		int health_bar_x = 0; // Top left corner of the health bar
 		int health_bar_y = 0; // Adjusted to be at the bottom of the window
 		render_health_bar(renderer, Main_character.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
+
+	SDL_RenderPresent(renderer);
+}
+
+void game_lose_state_render() {
+
+	SDL_Rect lose_background_rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+	SDL_RenderCopy(renderer, lose_background_texture, NULL, &lose_background_rect);
+
+	SDL_Rect home_button_rect = { 1560, 680, 200, 200 };
+	SDL_RenderCopy(renderer, return_button_texture, NULL, &home_button_rect);
+
+	SDL_RenderPresent(renderer);
+}
+
+void game_win_state_render() {
+
+	SDL_Rect win_background_rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+	SDL_RenderCopy(renderer, win_background_texture, NULL, &win_background_rect);
+
+	SDL_Rect home_button_rect = { 1560, 680, 200, 200 };
+	SDL_RenderCopy(renderer, return_button_texture, NULL, &home_button_rect);
 
 	SDL_RenderPresent(renderer);
 }
