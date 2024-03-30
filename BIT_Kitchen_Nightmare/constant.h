@@ -2,7 +2,7 @@
 #define TRUE 1
 
 #define WINDOW_WIDTH 1920
-#define WINDOW_HEIGHT 1200
+#define WINDOW_HEIGHT 1080
 
 #define MAP_WIDTH 3480 //3840 for real
 #define MAP_HEIGHT 2160

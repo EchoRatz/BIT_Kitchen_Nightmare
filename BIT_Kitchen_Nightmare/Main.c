@@ -189,9 +189,7 @@ int main(int argc, char* argv[]) {
 		printf("SDL Audio could not initialize! SDL Audio Error: %s\n", SDL_GetError());
 	}
 
-	//Initialize the audio system
-	AudioManager_Init();
-
+	
 	int MusicWasPaused = 0; //Keep track of the music state
 
 	setup();
@@ -299,6 +297,8 @@ int initialize_window(void) {
 	initialize_enemies(renderer);
 	initialize_stage1_enemies();
 	initialize_attacks();
+	//Initialize the audio system
+	AudioManager_Init();
 
 	return TRUE;
 }
