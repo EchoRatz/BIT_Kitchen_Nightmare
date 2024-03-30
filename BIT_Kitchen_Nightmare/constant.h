@@ -19,4 +19,3 @@
 #define MAX_ATTACKS 6
 #define ATTACK_DURATION 15
 #define RENDER_DURATION 300
-
