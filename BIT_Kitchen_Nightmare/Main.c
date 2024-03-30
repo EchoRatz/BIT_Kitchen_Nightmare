@@ -590,53 +590,59 @@ void reset_game_state() {
 
 //Each type of Enemy stat initialize
 void initialize_enemies(SDL_Renderer* renderer) {
-	type[0].width = 100;
-	type[0].height = 100;
-	type[0].movement_speed = 150;
-	type[0].health = 100;
+	type[0].width = 50;
+	type[0].height = 50;
+	type[0].movement_speed = 90;
+	type[0].health = 20;
 	type[0].atk = 10;
-	type[0].texture = load_texture("Assets/Enemy/Enemy_pig.png", renderer);
+	type[0].texture = load_texture("Assets/Enemy/Enemy_egg.png", renderer);
 	
 	type[1].width = 50;
 	type[1].height = 50;
 	type[1].movement_speed = 150;
-	type[1].health = 200;
+	type[1].health = 150;
 	type[1].atk = 30;
 	type[1].texture = load_texture("Assets/Enemy/Enemy_chicken.png", renderer);
 
 	//---------------------------------------
-	type[2].width = 40;
-	type[2].height = 40;
+	type[2].width = 50;
+	type[2].height = 50;
 	type[2].movement_speed = 150;
-	type[2].health = 200;
-	type[2].atk = 30;
+	type[2].health = 100;
+	type[2].atk = 20;
 	type[2].texture = load_texture("Assets/Enemy/Enemy_bell_pepper.png", renderer);
 	//---------------------------------------------
+	type[3].width = 300;
+	type[3].height = 300;
+	type[3].movement_speed = 100;
+	type[3].health = 300;
+	type[3].atk = 40;
+	type[3].texture = load_texture("Assets/Enemy/Miniboss_chicken.png", renderer);
 	
 }
 
 //initialize enemy per wave.
 void initialize_stage1_enemies() {
 
-	stage1.waves[0].Enemy_count[0] = 15; 
-	stage1.waves[0].Enemy_count[1] = 5;
-	stage1.waves[0].Enemy_count[2] = 5;
+	stage1.waves[0].Enemy_count[0] = 50; 
+	stage1.waves[0].Enemy_count[1] = 20;
+	stage1.waves[0].Enemy_count[2] = 30;
 
-	stage1.waves[1].Enemy_count[0] = 20;
-	stage1.waves[1].Enemy_count[1] = 10;
-	stage1.waves[1].Enemy_count[2] = 5;
+	stage1.waves[1].Enemy_count[0] = 70;
+	stage1.waves[1].Enemy_count[1] = 40;
+	stage1.waves[1].Enemy_count[2] = 40;
 
-	stage1.waves[2].Enemy_count[0] = 25;
-	stage1.waves[2].Enemy_count[1] = 10;
-	stage1.waves[2].Enemy_count[2] = 5;
+	stage1.waves[2].Enemy_count[0] = 70;
+	stage1.waves[2].Enemy_count[1] = 30;
+	stage1.waves[2].Enemy_count[3] = 1;
 
-	stage1.waves[3].Enemy_count[0] = 25;
-	stage1.waves[3].Enemy_count[1] = 20;
-	stage1.waves[3].Enemy_count[2] = 5;
+	stage1.waves[3].Enemy_count[0] = 90;
+	stage1.waves[3].Enemy_count[1] = 50;
+	stage1.waves[3].Enemy_count[2] = 30;
 
-	stage1.waves[4].Enemy_count[0] = 30;
-	stage1.waves[4].Enemy_count[1] = 30;
-	stage1.waves[4].Enemy_count[2] = 5;
+	stage1.waves[4].Enemy_count[0] = 90;
+	stage1.waves[4].Enemy_count[1] = 50;
+	stage1.waves[4].Enemy_count[2] = 40;
 
 }
 
@@ -910,7 +916,7 @@ void apply_attack_damage_to_enemies() {
 					enemy->isActive = false; // Enemy defeated
 					// Additional logic for handling defeated enemy (e.g., scoring)
 					killed_enemy++;
-					if (killed_enemy == MAX_ENEMIES_STAGE1) {
+					if (enemy->type == 3 && enemy -> isActive == 0) {
 						gameState = GAME_STATE_WIN;
 					}
 				}
