@@ -4,6 +4,7 @@
 #include "./constant.h"
 #include "SDL_image.h"
 #include "SDL_main.h"
+#include "SDL_ttf.h"
 #include "AudioManager.h"
 #include <math.h>
 #include <stdlib.h>
@@ -20,9 +21,10 @@ SDL_Texture* setting_button_texture = NULL;
 SDL_Texture* collection_button_texture = NULL;
 SDL_Texture* shop_button_texture = NULL;
 SDL_Texture* menu_background_texture = NULL;
-SDL_Texture* win_background_texture = NULL;
-SDL_Texture* lose_background_texture = NULL;
-SDL_Texture* return_button_texture = NULL;
+SDL_Texture* game_over_texture = NULL;
+SDL_Texture* congrates_texture = NULL;
+SDL_Texture* retry_texture = NULL;
+SDL_Texture* back_to_menu_texture = NULL;
 
 //Pause menu
 SDL_Texture* resume_button_texture = NULL;
@@ -96,6 +98,8 @@ typedef struct {
 	int type; // Index to the Enemy_type
 	float currentHealth; // Current health if it can decrease from the base
 	int isActive; // 1 if active, 0 if not
+	int last_damage_taken;
+	Uint32 damage_display_timer;
 } Enemy;
 
 //Wave data
@@ -163,6 +167,7 @@ void initialize_attacks(void);
 void updated_attacks(Uint32 currentTime);
 void render_attacks();
 void apply_attack_damage_to_enemies();
+void render_enemy_damage(SDL_Renderer* renderer);
 
 
 
@@ -245,15 +250,16 @@ int main(int argc, char* argv[]) {
 				break;
 			}
 
-			case GAME_STATE_LOSE:
-					
+			case GAME_STATE_LOSE: {
+
 				if (game_lose_process_input() == 1) {
 					reset_game_state();
 					gameState = GAME_STATE_MAIN_MENU;
-					}
+				}
 				game_lose_state_render();
 
 				break;
+			}
 
 			case GAME_STATE_WIN:
 
@@ -321,6 +327,11 @@ int initialize_window(void) {
 	if (IMG_Init(IMG_INIT_PNG) && IMG_INIT_PNG != IMG_INIT_PNG) {
 		fprintf(stderr, "Failed to initialize SDL_image: %s\n", IMG_GetError());
 		return FALSE;
+	}
+
+	if (TTF_Init() == -1) {
+		printf("SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError());
+		// Handle the error, perhaps exit the program
 	}
 
 	initialize_enemies(renderer);
@@ -408,8 +419,8 @@ int game_lose_process_input() {
 		if (event.type == SDL_MOUSEBUTTONDOWN) {
 			int x, y;
 			SDL_GetMouseState(&x, &y);
-			if (x >= 1560 && x <= 1760 && y >= 680 && y <= 880) { // If the mouse click is within the start button area
-				return 1; // Start the game
+			if (x >= 630 && x <= 1331 && y >= 675 && y <= 763) { // If the mouse click is within menu button area
+				return 1; // to menu
 			}
 		}
 
@@ -432,7 +443,7 @@ int game_win_process_input() {
 		if (event.type == SDL_MOUSEBUTTONDOWN) {
 			int x, y;
 			SDL_GetMouseState(&x, &y);
-			if (x >= 1560 && x <= 1760 && y >= 680 && y <= 880) { // If the mouse click is within the start button area
+			if (x >= 630 && x <= 1331 && y >= 600 && y <= 688) { // If the mouse click is within the start button area
 				return 1; // Start the game
 			}
 		}
@@ -475,7 +486,7 @@ int pause_process_input() {
 					mouseY >= exit_button_rect.y && mouseY <= exit_button_rect.y + exit_button_rect.h){
 					// Exit button was clicked
 					return 2;
-						}	
+					}	
 			}
 	}
 
@@ -520,9 +531,10 @@ void setup() {
 	exit_button_texture = load_texture("Assets/Pause_menu/Exit_button.png", renderer);
 
 	//Result
-	win_background_texture = load_texture("Assets/Result/Win.png", renderer);
-	lose_background_texture = load_texture("Assets/Result/Lose.png", renderer);
-	return_button_texture = load_texture("Assets/Result/Home.png", renderer);
+	game_over_texture = load_texture("Assets/Result/game_over/game_over.png", renderer);
+	congrates_texture = load_texture("Assets/Result/congrates/congrates.png", renderer);
+	retry_texture = load_texture("Assets/Result/game_over/retry.png", renderer);
+	back_to_menu_texture = load_texture("Assets/Result/game_over/back_to_menu.png", renderer);
 
 	gameplay_setup();
 }
@@ -909,7 +921,10 @@ void apply_attack_damage_to_enemies() {
 			// Check if the attack area intersects with the enemy hitbox
 			if (SDL_HasIntersection(&attackArea, &enemyHitbox)) {
 				// Apply damage to the enemy
-				enemy->currentHealth -= attack->damage;
+				int damage = attack->damage;
+				enemy->currentHealth -= damage;
+				enemy->last_damage_taken = damage;
+				enemy->damage_display_timer = SDL_GetTicks() + 500;
 
 				// Log or handle enemy defeat if health drops below zero
 				if (enemy->currentHealth <= 0) {
@@ -925,6 +940,47 @@ void apply_attack_damage_to_enemies() {
 			}
 		}
 	}
+}
+
+void render_enemy_damage(SDL_Renderer* renderer) {
+
+	TTF_Font* font = TTF_OpenFont("Assets/Font/PixeloidSans.ttf", 24);
+	SDL_Color color = { 200, 0, 0 };
+
+	if (!font) {
+		printf("Failed to load font: %s\n", TTF_GetError());
+		// Handle error (e.g., use a fallback font or exit)
+	}
+
+	for (int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
+		Enemy* enemy = &Enemies[i];
+		if (!enemy->isActive || SDL_GetTicks() > enemy->damage_display_timer) {
+			continue;
+		}
+
+		char damageText[12];
+		sprintf_s(damageText, sizeof(damageText), "%d", enemy->last_damage_taken);
+
+		SDL_Surface* surface = TTF_RenderText_Solid(font, damageText, color);
+
+		if (surface) {
+			SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+			int textWidth = surface->w;
+			int textHeight = surface->h;
+
+			SDL_Rect renderQuad = { enemy->rect.x - camera.x, enemy->rect.y - camera.y - 20, textWidth, textHeight }; // Position above the enemy
+			SDL_RenderCopy(renderer, texture, NULL, &renderQuad);
+
+			SDL_FreeSurface(surface);
+			SDL_DestroyTexture(texture);
+
+		}
+		else {
+			fprintf(stderr, "Failed to create surface: %s\n", TTF_GetError());
+		}
+	}
+
+	TTF_CloseFont(font);
 }
 
 
@@ -1050,6 +1106,9 @@ void gameplay_render() {
 		//Render enemies
 		render_enemies(renderer);
 
+		//render damage
+		render_enemy_damage(renderer);
+
 		// Render the attack VFX if active and within the display window
 		render_attacks();
 
@@ -1066,23 +1125,28 @@ void gameplay_render() {
 
 void game_lose_state_render() {
 
-	SDL_Rect lose_background_rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
-	SDL_RenderCopy(renderer, lose_background_texture, NULL, &lose_background_rect);
+	
+	SDL_Rect game_over_rect = { 135, 200, 1690, 451 };
+	SDL_RenderCopy(renderer, game_over_texture, NULL, &game_over_rect);
 
-	SDL_Rect home_button_rect = { 1560, 680, 200, 200 };
-	SDL_RenderCopy(renderer, return_button_texture, NULL, &home_button_rect);
+	SDL_Rect back_to_menu_button_rect = { 630, 675, 701, 88 };
+	SDL_RenderCopy(renderer, back_to_menu_texture, NULL, &back_to_menu_button_rect);
 
 	SDL_RenderPresent(renderer);
 }
 
 void game_win_state_render() {
 
-	SDL_Rect win_background_rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
-	SDL_RenderCopy(renderer, win_background_texture, NULL, &win_background_rect);
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 5);// 128 is the alpha value for semi-transparent
+	SDL_Rect rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+	SDL_RenderFillRect(renderer, &rect);
 
-	SDL_Rect home_button_rect = { 1560, 680, 200, 200 };
-	SDL_RenderCopy(renderer, return_button_texture, NULL, &home_button_rect);
+	SDL_Rect congrate_rect = { 58, 200, 1843, 296 };
+	SDL_RenderCopy(renderer, congrates_texture, NULL, &congrate_rect);
 
+	SDL_Rect back_to_menu_button_rect = { 630, 600, 701, 88 };
+	SDL_RenderCopy(renderer, back_to_menu_texture, NULL, &back_to_menu_button_rect);
+	
 	SDL_RenderPresent(renderer);
 }
 
