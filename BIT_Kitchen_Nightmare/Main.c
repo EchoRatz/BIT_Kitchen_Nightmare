@@ -145,6 +145,15 @@ enum GameState {
 };
 enum GameState gameState = GAME_STATE_MAIN_MENU;
 
+// Music track state
+typedef enum {
+	NONE_MUSIC = -1, //Indicate there is no music
+	MAIN_MENU_MUSIC,
+	GAMEPLAY_MUSIC
+} MusicTrack;
+
+MusicTrack currentMusicTrack = NONE_MUSIC;
+
 // Initialization and setup functions
 int initialize_window(void);
 void gameplay_setup(void);
@@ -210,18 +219,23 @@ int main(int argc, char* argv[]) {
 	setup();
 	lastPeriodicCall = SDL_GetTicks() - periodicInterval;
 
-	//Load and play background music
-	if (AudioManager_LoadMusic("Assets/Background Musics/Demo2.mp3")) {
-		AudioManager_PlayMusic();
-	}
+	
 	
 
 	while (game_is_running) {
 
 		switch (gameState) {
 
-			case GAME_STATE_MAIN_MENU:
-				
+		case GAME_STATE_MAIN_MENU:
+
+			// Play the main menu music
+			if (currentMusicTrack != MAIN_MENU_MUSIC) { // Check if the current music track is not the main menu music
+				AudioManager_LoadAndPlayMusic("Assets/Background Musics/Demo1.mp3", -1); // Load and play the main menu music
+			
+			Mix_VolumeMusic(50); // Set the volume to 50%
+			currentMusicTrack = MAIN_MENU_MUSIC; // Update the current music track
+			}
+
 				if(menu_process_input() == 1) gameState = GAME_STATE_GAMEPLAY;
 				menu_render();
 				
@@ -230,6 +244,13 @@ int main(int argc, char* argv[]) {
 			case GAME_STATE_GAMEPLAY: {
 
 				Uint32 currentTime = SDL_GetTicks();
+
+				if (currentMusicTrack != GAMEPLAY_MUSIC) {
+					AudioManager_LoadAndPlayMusic("Assets/Background Musics/Demo2.mp3", -1);
+					currentMusicTrack = GAMEPLAY_MUSIC;
+				}
+				
+
 				if (gameplay_process_input() == 2) { // Indicates a request to enter pause menu
 					gameState = GAME_STATE_PAUSE_MENU;
 					AudioManager_PauseMusic(); //Pause the music

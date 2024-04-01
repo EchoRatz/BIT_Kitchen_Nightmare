@@ -4,6 +4,9 @@
 //Initiallize the audio system and SDL mixer
 void AudioManager_Init();
 
+//Load and play music from specified file path
+void AudioManager_LoadAndPlayMusic(const char* file_path)
+
 //Load music from specified file path
 int AudioManager_LoadMusic(const char* file_path);
 //Return 1 on sucess, 0 on failure
