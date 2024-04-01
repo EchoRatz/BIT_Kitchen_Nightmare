@@ -4,6 +4,8 @@
 #include "./constant.h"
 #include "SDL_image.h"
 #include "SDL_main.h"
+#include "SDL_ttf.h"
+#include "AudioManager.h"
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
@@ -11,7 +13,6 @@
 
 //Define variable
 int game_is_running = FALSE;
-int in_menu = TRUE;
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 SDL_Texture* map_texture = NULL;
@@ -20,9 +21,12 @@ SDL_Texture* setting_button_texture = NULL;
 SDL_Texture* collection_button_texture = NULL;
 SDL_Texture* shop_button_texture = NULL;
 SDL_Texture* menu_background_texture = NULL;
+SDL_Texture* game_over_texture = NULL;
+SDL_Texture* congrates_texture = NULL;
+SDL_Texture* retry_texture = NULL;
+SDL_Texture* back_to_menu_texture = NULL;
 
 //Pause menu
-int menu_item_selected = 0;//0 for resume, 1 for exit
 SDL_Texture* resume_button_texture = NULL;
 SDL_Texture* exit_button_texture = NULL;
 
@@ -55,10 +59,12 @@ typedef struct {
 	SDL_Rect area; // The attack area
 	Uint32 cooldown; // Time in milliseconds between attacks
 	Uint32 lastAttackTime; // Last time this attack was used
+	Uint32 lastTimeRender;
 	SDL_Texture* vfxTexture; // Texture for the attack's visual effect
 	int damage; // Damage dealt by the attack
 	int level; // Level of the attack, influencing damage, area, etc.
 	bool isActive;// Is the attack currently active/enabled
+	bool isRender;
 	bool isHave;
 } AutoAttack;
 
@@ -92,6 +98,8 @@ typedef struct {
 	int type; // Index to the Enemy_type
 	float currentHealth; // Current health if it can decrease from the base
 	int isActive; // 1 if active, 0 if not
+	int last_damage_taken;
+	Uint32 damage_display_timer;
 } Enemy;
 
 //Wave data
@@ -110,6 +118,7 @@ Stage stage1;
 Enemy Enemies[MAX_ENEMIES_STAGE1];
 int randPos;
 int typeTexture;
+int killed_enemy;
 
 
 //8 spawn position
@@ -130,13 +139,26 @@ struct spawn_pos {
 enum GameState {
 	GAME_STATE_MAIN_MENU,
 	GAME_STATE_GAMEPLAY,
-	GAME_STATE_PAUSE_MENU
+	GAME_STATE_PAUSE_MENU,
+	GAME_STATE_WIN,
+	GAME_STATE_LOSE
 };
 enum GameState gameState = GAME_STATE_MAIN_MENU;
 
+// Music track state
+typedef enum {
+	NONE_MUSIC = -1, //Indicate there is no music
+	MAIN_MENU_MUSIC,
+	GAMEPLAY_MUSIC
+} MusicTrack;
+
+MusicTrack currentMusicTrack = NONE_MUSIC;
+
 // Initialization and setup functions
 int initialize_window(void);
+void gameplay_setup(void);
 void setup(void);
+void reset_game_state(void);                                                 
 
 //Enemies function related
 void initialize_enemies(SDL_Renderer* renderer);
@@ -154,6 +176,7 @@ void initialize_attacks(void);
 void updated_attacks(Uint32 currentTime);
 void render_attacks();
 void apply_attack_damage_to_enemies();
+void render_enemy_damage(SDL_Renderer* renderer);
 
 
 
@@ -164,6 +187,10 @@ int pause_process_input(void);
 void gameplay_update(float delta_time);
 void menu_render(void);
 void gameplay_render(void);
+int game_lose_process_input(void);
+void game_lose_state_render(void);
+int game_win_process_input(void);
+void game_win_state_render(void);
 void pause_render(void);
 void update_camera(void); 
 void cap_framerate(int* last_frame_time, float* delta_time); //FPS
@@ -182,23 +209,52 @@ int main(int argc, char* argv[]) {
 
 	game_is_running = initialize_window();
 
+	if(SDL_Init(SDL_INIT_AUDIO) < 0) {
+		printf("SDL Audio could not initialize! SDL Audio Error: %s\n", SDL_GetError());
+	}
+
+	
+	int MusicWasPaused = 0; //Keep track of the music state
+
 	setup();
 	lastPeriodicCall = SDL_GetTicks() - periodicInterval;
 
+	
+	
+
 	while (game_is_running) {
+
 		switch (gameState) {
-			case GAME_STATE_MAIN_MENU:
-				
+
+		case GAME_STATE_MAIN_MENU:
+
+			// Play the main menu music
+			if (currentMusicTrack != MAIN_MENU_MUSIC) { // Check if the current music track is not the main menu music
+				AudioManager_LoadAndPlayMusic("Assets/Background Musics/Demo1.mp3", -1); // Load and play the main menu music
+			
+			Mix_VolumeMusic(50); // Set the volume to 50%
+			currentMusicTrack = MAIN_MENU_MUSIC; // Update the current music track
+			}
+
 				if(menu_process_input() == 1) gameState = GAME_STATE_GAMEPLAY;
 				menu_render();
 				
 				break;
 
 			case GAME_STATE_GAMEPLAY: {
-			
+
 				Uint32 currentTime = SDL_GetTicks();
+
+				if (currentMusicTrack != GAMEPLAY_MUSIC) {
+					AudioManager_LoadAndPlayMusic("Assets/Background Musics/Demo2.mp3", -1);
+					currentMusicTrack = GAMEPLAY_MUSIC;
+				}
+				
+
 				if (gameplay_process_input() == 2) { // Indicates a request to enter pause menu
 					gameState = GAME_STATE_PAUSE_MENU;
+					AudioManager_PauseMusic(); //Pause the music
+					MusicWasPaused = 1; //Keep track of the music state
 				}
 				else {
 					Uint32 currentTime = SDL_GetTicks();
@@ -215,14 +271,40 @@ int main(int argc, char* argv[]) {
 				break;
 			}
 
+			case GAME_STATE_LOSE: {
+
+				if (game_lose_process_input() == 1) {
+					reset_game_state();
+					gameState = GAME_STATE_MAIN_MENU;
+				}
+				game_lose_state_render();
+
+				break;
+			}
+
+			case GAME_STATE_WIN:
+
+				if (game_win_process_input() == 1) {
+					reset_game_state();
+					gameState = GAME_STATE_MAIN_MENU;
+				}
+				game_win_state_render();
+
+				break;
+
 			case GAME_STATE_PAUSE_MENU: {
 				// Process pause menu input and render
 				int pauseInputResult = pause_process_input();
 				if (pauseInputResult == 1) { // Resume game
 					gameState = GAME_STATE_GAMEPLAY;
+					if(MusicWasPaused == 1){
+						AudioManager_ResumeMusic(); // Resume the music
+					}
 				}
 				else if (pauseInputResult == 2) { // Exit to main menu
+					reset_game_state();
 					gameState = GAME_STATE_MAIN_MENU;
+					AudioManager_StopMusic(); // Stop the music
 				}
 				pause_render();
 				break;
@@ -268,9 +350,16 @@ int initialize_window(void) {
 		return FALSE;
 	}
 
+	if (TTF_Init() == -1) {
+		printf("SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError());
+		// Handle the error, perhaps exit the program
+	}
+
 	initialize_enemies(renderer);
 	initialize_stage1_enemies();
 	initialize_attacks();
+	//Initialize the audio system
+	AudioManager_Init();
 
 	return TRUE;
 }
@@ -338,6 +427,56 @@ int gameplay_process_input() {
 	return 1;
 }
 
+int game_lose_process_input() {
+
+	const Uint8* state = SDL_GetKeyboardState(NULL);
+	SDL_Event event;
+
+	while (SDL_PollEvent(&event)) {
+		if (event.type == SDL_QUIT) {
+			game_is_running = FALSE;
+		}
+
+		if (event.type == SDL_MOUSEBUTTONDOWN) {
+			int x, y;
+			SDL_GetMouseState(&x, &y);
+			if (x >= 630 && x <= 1331 && y >= 675 && y <= 763) { // If the mouse click is within menu button area
+				return 1; // to menu
+			}
+		}
+
+	}
+
+	return 0;
+
+}
+
+int game_win_process_input() {
+
+	const Uint8* state = SDL_GetKeyboardState(NULL);
+	SDL_Event event;
+
+	while (SDL_PollEvent(&event)) {
+		if (event.type == SDL_QUIT) {
+			game_is_running = FALSE;
+		}
+
+		if (event.type == SDL_MOUSEBUTTONDOWN) {
+			int x, y;
+			SDL_GetMouseState(&x, &y);
+			if (x >= 630 && x <= 1331 && y >= 600 && y <= 688) { // If the mouse click is within the start button area
+				return 1; // Start the game
+			}
+		}
+
+	}
+
+	return 0;
+
+
+}
+
+
 int pause_process_input() {
 	const Uint8* state = SDL_GetKeyboardState(NULL);
 	SDL_Event event;
@@ -368,7 +507,7 @@ int pause_process_input() {
 					mouseY >= exit_button_rect.y && mouseY <= exit_button_rect.y + exit_button_rect.h){
 					// Exit button was clicked
 					return 2;
-						}	
+					}	
 			}
 	}
 
@@ -401,7 +540,27 @@ void setup() {
 	srand(time(NULL));
 	last_switch_time = SDL_GetTicks(); // Initialize with the current time
 	
+	//Lobby
+	start_button_texture = load_texture("Assets/Lobby/Button1-Play.png", renderer);
+	setting_button_texture = load_texture("Assets/Lobby/Button2-Setting.png", renderer);
+	collection_button_texture = load_texture("Assets/Lobby/Button3-Collection.png", renderer);
+	shop_button_texture = load_texture("Assets/Lobby/Button4-Shop.png", renderer);
+	menu_background_texture = load_texture("Assets/Lobby/main_menu_background.png", renderer);
 
+	//Pasue menu
+	resume_button_texture = load_texture("Assets/Pause_menu/Resume_button.png", renderer);
+	exit_button_texture = load_texture("Assets/Pause_menu/Exit_button.png", renderer);
+
+	//Result
+	game_over_texture = load_texture("Assets/Result/game_over/game_over.png", renderer);
+	congrates_texture = load_texture("Assets/Result/congrates/congrates.png", renderer);
+	retry_texture = load_texture("Assets/Result/game_over/retry.png", renderer);
+	back_to_menu_texture = load_texture("Assets/Result/game_over/back_to_menu.png", renderer);
+
+	gameplay_setup();
+}
+
+void gameplay_setup() {
 
 	//Set up Main_character stat
 	Main_character.x = MAP_WIDTH / 2;
@@ -425,75 +584,98 @@ void setup() {
 		Main_character.texture[1] = load_texture("Assets/Main_character/Male_chef_2.png", renderer);
 
 	}
-	
+
 
 	map_texture = load_texture("Assets/Map/Map1.png", renderer);
 
-	//Lobby
-	start_button_texture = load_texture("Assets/Lobby/Button1-Play.png", renderer);
-	setting_button_texture = load_texture("Assets/Lobby/Button2-Setting.png", renderer);
-	collection_button_texture = load_texture("Assets/Lobby/Button3-Collection.png", renderer);
-	shop_button_texture = load_texture("Assets/Lobby/Button4-Shop.png", renderer);
-	menu_background_texture = load_texture("Assets/Lobby/main_menu_background.png", renderer);
-
-	//Pasue menu
-	resume_button_texture = load_texture("Assets/Pause_menu/Resume_button.png", renderer);
-	exit_button_texture = load_texture("Assets/Pause_menu/Exit_button.png", renderer);
-
 	camera.x = Main_character.x - WINDOW_WIDTH / 2;
 	camera.y = Main_character.y - WINDOW_HEIGHT / 2;
+}
 
+void reset_game_state() {
+
+	last_frame_time = 0;
+	delta_time = 0.0f;
+	lastPeriodicCall = SDL_GetTicks() - periodicInterval;
+	waveIndex = 0;
+
+	// Reset player state
+	move_up = FALSE;
+	move_down = FALSE;
+	move_left = FALSE;
+	move_right = FALSE;
+	facing_left = 0;
+	render_motion = true;
+	last_switch_time = 0;
+
+	// Reset enemies, stages, and attacks
+	// Make sure to properly deallocate any dynamic memory if necessary before resetting
+
+	for(int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
+		// Free any dynamically allocated memory (if any) here
+		// For example, if Enemies[i].name is a dynamically allocated string:
+		// free(Enemies[i].name);
+
+		memset(&Enemies[i], 0, sizeof(Enemies[i]));
+	}
+	gameplay_setup();
 }
 
 //Each type of Enemy stat initialize
 void initialize_enemies(SDL_Renderer* renderer) {
-	type[0].width = 100;
-	type[0].height = 100;
-	type[0].movement_speed = 150;
-	type[0].health = 100;
+	type[0].width = 50;
+	type[0].height = 50;
+	type[0].movement_speed = 90;
+	type[0].health = 20;
 	type[0].atk = 10;
-	type[0].texture = load_texture("Assets/Enemy/Enemy_pig.png", renderer);
+	type[0].texture = load_texture("Assets/Enemy/Enemy_egg.png", renderer);
 	
 	type[1].width = 50;
 	type[1].height = 50;
 	type[1].movement_speed = 150;
-	type[1].health = 200;
+	type[1].health = 150;
 	type[1].atk = 30;
 	type[1].texture = load_texture("Assets/Enemy/Enemy_chicken.png", renderer);
 
 	//---------------------------------------
-	type[2].width = 40;
-	type[2].height = 40;
+	type[2].width = 50;
+	type[2].height = 50;
 	type[2].movement_speed = 150;
-	type[2].health = 200;
-	type[2].atk = 30;
+	type[2].health = 100;
+	type[2].atk = 20;
 	type[2].texture = load_texture("Assets/Enemy/Enemy_bell_pepper.png", renderer);
 	//---------------------------------------------
+	type[3].width = 300;
+	type[3].height = 300;
+	type[3].movement_speed = 100;
+	type[3].health = 300;
+	type[3].atk = 40;
+	type[3].texture = load_texture("Assets/Enemy/Miniboss_chicken.png", renderer);
 	
 }
 
 //initialize enemy per wave.
 void initialize_stage1_enemies() {
 
-	stage1.waves[0].Enemy_count[0] = 15; 
-	stage1.waves[0].Enemy_count[1] = 5;
-	stage1.waves[0].Enemy_count[2] = 5;
+	stage1.waves[0].Enemy_count[0] = 50; 
+	stage1.waves[0].Enemy_count[1] = 20;
+	stage1.waves[0].Enemy_count[2] = 30;
 
-	stage1.waves[1].Enemy_count[0] = 20;
-	stage1.waves[1].Enemy_count[1] = 10;
-	stage1.waves[1].Enemy_count[2] = 5;
+	stage1.waves[1].Enemy_count[0] = 70;
+	stage1.waves[1].Enemy_count[1] = 40;
+	stage1.waves[1].Enemy_count[2] = 40;
 
-	stage1.waves[2].Enemy_count[0] = 25;
-	stage1.waves[2].Enemy_count[1] = 10;
-	stage1.waves[2].Enemy_count[2] = 5;
+	stage1.waves[2].Enemy_count[0] = 70;
+	stage1.waves[2].Enemy_count[1] = 30;
+	stage1.waves[2].Enemy_count[3] = 1;
 
-	stage1.waves[3].Enemy_count[0] = 25;
-	stage1.waves[3].Enemy_count[1] = 20;
-	stage1.waves[3].Enemy_count[2] = 5;
+	stage1.waves[3].Enemy_count[0] = 90;
+	stage1.waves[3].Enemy_count[1] = 50;
+	stage1.waves[3].Enemy_count[2] = 30;
 
-	stage1.waves[4].Enemy_count[0] = 30;
-	stage1.waves[4].Enemy_count[1] = 30;
-	stage1.waves[4].Enemy_count[2] = 5;
+	stage1.waves[4].Enemy_count[0] = 90;
+	stage1.waves[4].Enemy_count[1] = 50;
+	stage1.waves[4].Enemy_count[2] = 40;
 
 }
 
@@ -618,6 +800,10 @@ void check_collision_and_apply_damage(float delta_time) {
 				Main_character.health -= damage;
 				if (Main_character.health < 0) Main_character.health = 0; // Prevent health from dropping below zero
 
+				if (Main_character.health == 0) {
+					gameState = GAME_STATE_LOSE;
+				}
+
 			}
 		}
 	}
@@ -632,9 +818,11 @@ void initialize_attacks(void) {
 
 	// Setup the first attack
 	Main_character.attacks[0].isActive = false;
+	Main_character.attacks[0].isRender = false;
 	Main_character.attacks[0].isHave = true;
 	Main_character.attacks[0].cooldown = 2000; // Example: 2 seconds
 	Main_character.attacks[0].lastAttackTime = 0;
+	Main_character.attacks[0].lastTimeRender = 0;
 	Main_character.attacks[0].damage = 50; // Example damage
 	Main_character.attacks[0].area = (SDL_Rect){0, 0, 200, 300}; // Set size, position is dynamic
 	Main_character.attacks[0].vfxTexture = load_texture("Assets/Attack_VFX/Attack3.png", renderer);
@@ -649,6 +837,7 @@ void updated_attacks(Uint32 currentTime) {
 		if (attack->isHave && !attack->isActive && (currentTime - attack->lastAttackTime >= attack->cooldown)) {
 			// Set the attack as active
 			attack->isActive = true;
+			attack->isRender = true;
 
 			// Record the current time as the last attack time
 			attack->lastAttackTime = currentTime;
@@ -672,6 +861,9 @@ void updated_attacks(Uint32 currentTime) {
 		// This is useful if your attack should "expire" even if it hasn't hit anything
 		if (attack->isActive && (currentTime - attack->lastAttackTime > ATTACK_DURATION)) {
 			attack->isActive = false;
+		}
+		if (currentTime - attack->lastAttackTime > RENDER_DURATION) {
+			attack->isRender = false;
 		}
 	}
 }
@@ -699,7 +891,7 @@ void render_attacks() {
 	*/
 	
 
-	if (Main_character.attacks[0].isActive && (currentTime - Main_character.attacks[0].lastAttackTime <= 100)) { // Display VFX for a short duration
+	if (Main_character.attacks[0].isRender && (currentTime - Main_character.attacks[0].lastAttackTime <= 200)) { // Display VFX for a short duration
 		// Adjust the attack area position relative to the camera
 		SDL_Rect vfxPosition = {
 			Main_character.attacks[0].area.x - camera.x, // Adjust X position relative to camera
@@ -750,18 +942,66 @@ void apply_attack_damage_to_enemies() {
 			// Check if the attack area intersects with the enemy hitbox
 			if (SDL_HasIntersection(&attackArea, &enemyHitbox)) {
 				// Apply damage to the enemy
-				enemy->currentHealth -= attack->damage;
+				int damage = attack->damage;
+				enemy->currentHealth -= damage;
+				enemy->last_damage_taken = damage;
+				enemy->damage_display_timer = SDL_GetTicks() + 500;
 
 				// Log or handle enemy defeat if health drops below zero
 				if (enemy->currentHealth <= 0) {
 					enemy->isActive = false; // Enemy defeated
 					// Additional logic for handling defeated enemy (e.g., scoring)
+					killed_enemy++;
+					if (enemy->type == 3 && enemy -> isActive == 0) {
+						gameState = GAME_STATE_WIN;
+					}
 				}
 
 				
 			}
 		}
 	}
+}
+
+void render_enemy_damage(SDL_Renderer* renderer) {
+
+	TTF_Font* font = TTF_OpenFont("Assets/Font/PixeloidSans.ttf", 24);
+	SDL_Color color = { 200, 0, 0 };
+
+	if (!font) {
+		printf("Failed to load font: %s\n", TTF_GetError());
+		// Handle error (e.g., use a fallback font or exit)
+	}
+
+	for (int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
+		Enemy* enemy = &Enemies[i];
+		if (!enemy->isActive || SDL_GetTicks() > enemy->damage_display_timer) {
+			continue;
+		}
+
+		char damageText[12];
+		sprintf_s(damageText, sizeof(damageText), "%d", enemy->last_damage_taken);
+
+		SDL_Surface* surface = TTF_RenderText_Solid(font, damageText, color);
+
+		if (surface) {
+			SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+			int textWidth = surface->w;
+			int textHeight = surface->h;
+
+			SDL_Rect renderQuad = { enemy->rect.x - camera.x, enemy->rect.y - camera.y - 20, textWidth, textHeight }; // Position above the enemy
+			SDL_RenderCopy(renderer, texture, NULL, &renderQuad);
+
+			SDL_FreeSurface(surface);
+			SDL_DestroyTexture(texture);
+
+		}
+		else {
+			fprintf(stderr, "Failed to create surface: %s\n", TTF_GetError());
+		}
+	}
+
+	TTF_CloseFont(font);
 }
 
 
@@ -887,6 +1127,9 @@ void gameplay_render() {
 		//Render enemies
 		render_enemies(renderer);
 
+		//render damage
+		render_enemy_damage(renderer);
+
 		// Render the attack VFX if active and within the display window
 		render_attacks();
 
@@ -898,6 +1141,33 @@ void gameplay_render() {
 		int health_bar_y = 0; // Adjusted to be at the bottom of the window
 		render_health_bar(renderer, Main_character.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
 
+	SDL_RenderPresent(renderer);
+}
+
+void game_lose_state_render() {
+
+	
+	SDL_Rect game_over_rect = { 135, 200, 1690, 451 };
+	SDL_RenderCopy(renderer, game_over_texture, NULL, &game_over_rect);
+
+	SDL_Rect back_to_menu_button_rect = { 630, 675, 701, 88 };
+	SDL_RenderCopy(renderer, back_to_menu_texture, NULL, &back_to_menu_button_rect);
+
+	SDL_RenderPresent(renderer);
+}
+
+void game_win_state_render() {
+
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 5);// 128 is the alpha value for semi-transparent
+	SDL_Rect rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+	SDL_RenderFillRect(renderer, &rect);
+
+	SDL_Rect congrate_rect = { 58, 200, 1843, 296 };
+	SDL_RenderCopy(renderer, congrates_texture, NULL, &congrate_rect);
+
+	SDL_Rect back_to_menu_button_rect = { 630, 600, 701, 88 };
+	SDL_RenderCopy(renderer, back_to_menu_texture, NULL, &back_to_menu_button_rect);
+	
 	SDL_RenderPresent(renderer);
 }
 
@@ -944,6 +1214,6 @@ void destroy_window() {
 	SDL_DestroyTexture(resume_button_texture);
 	SDL_DestroyTexture(exit_button_texture);
 
-
+	AudioManager_Cleanup();
 	SDL_Quit();
 }
