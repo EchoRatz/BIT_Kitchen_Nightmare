@@ -149,7 +149,9 @@ enum GameState gameState = GAME_STATE_MAIN_MENU;
 typedef enum {
 	NONE_MUSIC = -1, //Indicate there is no music
 	MAIN_MENU_MUSIC,
-	GAMEPLAY_MUSIC
+	GAMEPLAY_MUSIC,
+	GAMEWIN_MUSIC,
+	GAMEOVER_MUSIC,
 } MusicTrack;
 
 MusicTrack currentMusicTrack = NONE_MUSIC;
@@ -270,6 +272,11 @@ int main(int argc, char* argv[]) {
 
 			case GAME_STATE_LOSE: {
 
+				if (currentMusicTrack != GAMEOVER_MUSIC) {
+					AudioManager_LoadAndPlayMusic("Assets/Background Musics/GameOver.mp3", 0);
+					currentMusicTrack = GAMEOVER_MUSIC;
+				}
+
 				if (game_lose_process_input() == 1) {
 					reset_game_state();
 					gameState = GAME_STATE_MAIN_MENU;
@@ -280,6 +287,11 @@ int main(int argc, char* argv[]) {
 			}
 
 			case GAME_STATE_WIN:
+
+				if (currentMusicTrack != GAMEWIN_MUSIC) {
+					AudioManager_LoadAndPlayMusic("Assets/Background Musics/GameWin.mp3", -1);
+					currentMusicTrack = GAMEWIN_MUSIC;
+				}
 
 				if (game_win_process_input() == 1) {
 					reset_game_state();
