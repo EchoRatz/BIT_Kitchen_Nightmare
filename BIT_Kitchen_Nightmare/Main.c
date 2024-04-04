@@ -1198,7 +1198,7 @@ void apply_attack_damage_to_enemies() {
 					enemy->isActive = false; // Enemy defeated
 					// Additional logic for handling defeated enemy (e.g., scoring)
 					killed_enemy++;
-					if (enemy->type == 3 && enemy -> isActive == 0) {
+					if (enemy->type == 23 && enemy -> isActive == 0) {
 						gameState = GAME_STATE_WIN;
 					}
 				}
