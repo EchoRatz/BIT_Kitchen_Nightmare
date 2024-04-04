@@ -250,12 +250,46 @@ int main(int argc, char* argv[]) {
 				}
 
 				if (menu_process_input() == 1) {
-					startTimer();
-					gameState = GAME_STATE_GAMEPLAY;
+					//startTimer();
+					gameState = GAME_STATE_CUTSCENE;
 				}
 					menu_render();
 				
 				break;
+
+			case GAME_STATE_CUTSCENE:{
+
+				const int totalFrames = 16; // Total number of frames in the video
+				const int fps = 3; // Frames per second
+				char framePath[256];
+				SDL_Texture* frameTexture = NULL;
+
+				for (int i = 0; i < totalFrames; ++i) {
+					// Construct the path for the next frame
+					snprintf(framePath, sizeof(framePath), "Assets/Cutscene/frame%d.png", i);
+
+					// Load the frame as a texture
+					frameTexture = IMG_LoadTexture(renderer, framePath);
+					if (!frameTexture) {
+						printf("Failed to load frame: %s\n", IMG_GetError());
+						continue;
+					}
+
+					// Clear the renderer, draw the frame, and present
+					SDL_RenderClear(renderer);
+					SDL_RenderCopy(renderer, frameTexture, NULL, NULL);
+					SDL_RenderPresent(renderer);
+
+					// Wait for the next frame time
+					SDL_Delay(10000 / fps);
+	
+				}
+
+				startTimer();
+				gameState = GAME_STATE_GAMEPLAY;
+
+					break;
+				}
 
 			case GAME_STATE_GAMEPLAY: {
 
