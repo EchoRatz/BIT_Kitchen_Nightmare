@@ -689,11 +689,11 @@ void initialize_enemies(SDL_Renderer* renderer) {
 	type[2].atk = 20;
 	type[2].texture = load_texture("Assets/Enemy/Chicken.png", renderer);
 	//---------------------------------------------
-	type[3].width = 300;
-	type[3].height = 300;
-	type[3].movement_speed = 100;
-	type[3].health = 300;
-	type[3].atk = 40;
+	type[3].width = 50;
+	type[3].height = 50;
+	type[3].movement_speed = 130;
+	type[3].health = 100;
+	type[3].atk = 20;
 	type[3].texture = load_texture("Assets/Enemy/Chili.png", renderer);
 
 	type[4].width = 50;
