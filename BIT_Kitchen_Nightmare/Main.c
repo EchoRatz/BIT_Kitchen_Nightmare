@@ -177,6 +177,7 @@ void updated_attacks(Uint32 currentTime);
 void render_attacks();
 void apply_attack_damage_to_enemies();
 void render_enemy_damage(SDL_Renderer* renderer);
+void render_wave(SDL_Renderer* renderer);
 
 
 
@@ -1004,6 +1005,40 @@ void render_enemy_damage(SDL_Renderer* renderer) {
 	TTF_CloseFont(font);
 }
 
+void render_wave(SDL_Renderer* renderer) {
+
+	TTF_Font* font = TTF_OpenFont("Assets/Font/PixeloidSans.ttf", 24);
+	SDL_Color color = { 200, 0, 0 };
+
+	if (!font) {
+		printf("Failed to load font: %s\n", TTF_GetError());
+		// Handle error (e.g., use a fallback font or exit)
+	}
+
+	char waveInfo[100];
+	sprintf_s(waveInfo, sizeof(waveInfo), "Wave : %d", waveIndex );
+
+	SDL_Color textColor = { 255, 255, 255, 255 }; // White color
+	SDL_Surface* textSurface = TTF_RenderText_Solid(font, waveInfo, textColor);
+	if (!textSurface) {
+		printf("Unable to render wave text: %s\n", TTF_GetError());
+	}
+	else {
+		SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+		int textWidth = textSurface->w;
+		int textHeight = textSurface->h;
+		SDL_FreeSurface(textSurface);
+
+		// Define where you want the text to be rendered
+		SDL_Rect renderQuad = { 20, 50, textWidth, textHeight }; // Position it at the top-left corner, for example
+
+		SDL_RenderCopy(renderer, textTexture, NULL, &renderQuad);
+		SDL_DestroyTexture(textTexture); // Clean up texture now that we're done with it
+	}
+
+	TTF_CloseFont(font);
+}
+
 
 void update_camera() {
 	camera.x = Main_character.x - WINDOW_WIDTH / 2;
@@ -1133,7 +1168,8 @@ void gameplay_render() {
 		// Render the attack VFX if active and within the display window
 		render_attacks();
 
-
+		//render wave index
+		render_wave(renderer);
 
 		int health_bar_width = 1920;
 		int health_bar_height = 40;
