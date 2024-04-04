@@ -472,6 +472,7 @@ int gameplay_process_input() {
 			// Perform the attack
 			// For example: attack();
 				updated_attacks(currentTime);
+				AudioManager_PlayEffect(SOUND_SLASH);
 			// Update the last attack time
 			Main_character.attacks[0].lastAttackTime = currentTime;
 		}
@@ -1137,9 +1138,6 @@ void render_attacks() {
 
 	Uint32 currentTime = SDL_GetTicks();
 	
-	if (Main_character.attacks[0].isActive && (currentTime - Main_character.attacks[0].lastAttackTime <= 100)) {
-		AudioManager_PlayEffect(SOUND_SLASH); // Play the attack sound effect
-	}
 
 	/*For debug------------------------------------------------------------------------ -
 	if (Main_character.attacks[0].isActive && (currentTime - Main_character.attacks[0].lastAttackTime <= 100)) {
