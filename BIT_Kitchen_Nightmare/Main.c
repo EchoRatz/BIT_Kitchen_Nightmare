@@ -918,6 +918,7 @@ void initialize_stage1_enemies() {
 	stage1.waves[18].Enemy_count[4] = 40;
 
 	stage1.waves[19].Enemy_count[23] = 1;
+
 }
 
 //Spawn a wave of enemy
