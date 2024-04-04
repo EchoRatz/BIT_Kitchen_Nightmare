@@ -214,14 +214,10 @@ int main(int argc, char* argv[]) {
 		printf("SDL Audio could not initialize! SDL Audio Error: %s\n", SDL_GetError());
 	}
 
-	
 	int MusicWasPaused = 0; //Keep track of the music state
 
 	setup();
 	lastPeriodicCall = SDL_GetTicks() - periodicInterval;
-
-	
-	
 
 	while (game_is_running) {
 
@@ -359,8 +355,12 @@ int initialize_window(void) {
 	initialize_enemies(renderer);
 	initialize_stage1_enemies();
 	initialize_attacks();
+
 	//Initialize the audio system
 	AudioManager_Init();
+
+	//Preload sound effects
+	AudioManager_LoadPredefinedSoundEffect();
 
 	return TRUE;
 }
@@ -872,6 +872,10 @@ void updated_attacks(Uint32 currentTime) {
 void render_attacks() {
 
 	Uint32 currentTime = SDL_GetTicks();
+	
+	if (Main_character.attacks[0].isActive && (currentTime - Main_character.attacks[0].lastAttackTime <= 100)) {
+		AudioManager_PlayEffect(SOUND_SLASH); // Play the attack sound effect
+	}
 
 	/*For debug------------------------------------------------------------------------ -
 	if (Main_character.attacks[0].isActive && (currentTime - Main_character.attacks[0].lastAttackTime <= 100)) {
