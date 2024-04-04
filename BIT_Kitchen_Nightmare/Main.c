@@ -721,6 +721,8 @@ void initialize_stage1_enemies() {
 	stage1.waves[4].Enemy_count[1] = 50;
 	stage1.waves[4].Enemy_count[2] = 40;
 
+	//tftyyguigi
+
 }
 
 //Spawn a wave of enemy
