@@ -21,7 +21,7 @@ void AudioManager_Init() {
 	}
 }
 
-void AudioManager_LoadAndPlayMusic(const char* file_path, int loop) {
+void AudioManager_LoadAndPlayMusic(const char* file_path) {
 	//First stop and free any previous music
 	if (Mix_PlayingMusic()) {
 		Mix_HaltMusic();
@@ -39,7 +39,9 @@ void AudioManager_LoadAndPlayMusic(const char* file_path, int loop) {
 		return;
 	}
 
-	if (Mix_PlayMusic(currentMusic, loop) == -1) {
+	Mix_PlayMusic(currentMusic, -1); //Play music infinitely
+
+	if (!bgMusic) {
 		printf("Failed to play music! SDL_mixer Error: %s\n", Mix_GetError());
 	}
 }
