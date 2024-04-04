@@ -273,13 +273,14 @@ int main(int argc, char* argv[]) {
 					MusicWasPaused = 1; //Keep track of the music state
 				}
 				else {
+					
 					//Uint32 currentTime = SDL_GetTicks();
 					if (currentTime - lastPeriodicCall >= periodicInterval) {
 						if (waveIndex <= 19) {
 							spawn_wave(waveIndex);
 							waveIndex++;
 						}
-						lastPeriodicCall += periodicInterval;
+						lastPeriodicCall = currentTime;
 					}
 					gameplay_update(delta_time);
 					gameplay_render();
@@ -631,11 +632,17 @@ void gameplay_setup() {
 
 void reset_game_state() {
 
-	last_frame_time = 0;
-	delta_time = 0.0f;
-	lastPeriodicCall = SDL_GetTicks() - periodicInterval;
 	waveIndex = 0;
+	lastPeriodicCall = SDL_GetTicks();
+	last_frame_time = SDL_GetTicks();
+	delta_time = 0.0f;
 
+	timerStartTicks = 0; // Reset all timer-related variables
+	timerPausedTicks = 0;
+	accumulatedTime = 0;
+	timerPaused = false;
+	timerStarted = false;
+	
 	// Reset player state
 	move_up = FALSE;
 	move_down = FALSE;
