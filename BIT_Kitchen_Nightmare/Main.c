@@ -672,14 +672,14 @@ void initialize_enemies(SDL_Renderer* renderer) {
 	type[0].movement_speed = 90;
 	type[0].health = 20;
 	type[0].atk = 10;
-	type[0].texture = load_texture("Assets/Enemy/Enemy_egg.png", renderer);
+	type[0].texture = load_texture("Assets/Enemy/Banana.png", renderer);
 	
 	type[1].width = 50;
 	type[1].height = 50;
 	type[1].movement_speed = 150;
 	type[1].health = 150;
 	type[1].atk = 30;
-	type[1].texture = load_texture("Assets/Enemy/Enemy_chicken.png", renderer);
+	type[1].texture = load_texture("Assets/Enemy/Broccoli.png", renderer);
 
 	//---------------------------------------
 	type[2].width = 50;
@@ -687,40 +687,237 @@ void initialize_enemies(SDL_Renderer* renderer) {
 	type[2].movement_speed = 150;
 	type[2].health = 100;
 	type[2].atk = 20;
-	type[2].texture = load_texture("Assets/Enemy/Enemy_bell_pepper.png", renderer);
+	type[2].texture = load_texture("Assets/Enemy/Chicken.png", renderer);
 	//---------------------------------------------
 	type[3].width = 300;
 	type[3].height = 300;
 	type[3].movement_speed = 100;
 	type[3].health = 300;
 	type[3].atk = 40;
-	type[3].texture = load_texture("Assets/Enemy/Miniboss_chicken.png", renderer);
+	type[3].texture = load_texture("Assets/Enemy/Chili.png", renderer);
+
+	type[4].width = 50;
+	type[4].height = 50;
+	type[4].movement_speed = 150;
+	type[4].health = 100;
+	type[4].atk = 20;
+	type[4].texture = load_texture("Assets/Enemy/ChineseCabbage.png", renderer);
+
+	type[5].width = 50;
+	type[5].height = 50;
+	type[5].movement_speed = 150;
+	type[5].health = 100;
+	type[5].atk = 20;
+	type[5].texture = load_texture("Assets/Enemy/DragonFruit.png", renderer);
+
+	type[6].width = 50;
+	type[6].height = 50;
+	type[6].movement_speed = 150;
+	type[6].health = 100;
+	type[6].atk = 20;
+	type[6].texture = load_texture("Assets/Enemy/DuckEgg.png", renderer);
+
+	type[7].width = 50;
+	type[7].height = 50;
+	type[7].movement_speed = 150;
+	type[7].health = 100;
+	type[7].atk = 20;
+	type[7].texture = load_texture("Assets/Enemy/Egg.png", renderer);
+
+	type[8].width = 50;
+	type[8].height = 50;
+	type[8].movement_speed = 150;
+	type[8].health = 100;
+	type[8].atk = 20;
+	type[8].texture = load_texture("Assets/Enemy/Flour.png", renderer);
+
+	type[9].width = 50;
+	type[9].height = 50;
+	type[9].movement_speed = 150;
+	type[9].health = 100;
+	type[9].atk = 20;
+	type[9].texture = load_texture("Assets/Enemy/Ginger.png", renderer);
+
+	type[10].width = 50;
+	type[10].height = 50;
+	type[10].movement_speed = 150;
+	type[10].health = 100;
+	type[10].atk = 20;
+	type[10].texture = load_texture("Assets/Enemy/Lime.png", renderer);
+
+	type[11].width = 50;
+	type[11].height = 50;
+	type[11].movement_speed = 150;
+	type[11].health = 100;
+	type[11].atk = 20;
+	type[11].texture = load_texture("Assets/Enemy/Mushroom.png", renderer);
+
+	type[12].width = 50;
+	type[12].height = 50;
+	type[12].movement_speed = 150;
+	type[12].health = 100;
+	type[12].atk = 20;
+	type[12].texture = load_texture("Assets/Enemy/Onion.png", renderer);
+
+	type[13].width = 50;
+	type[13].height = 50;
+	type[13].movement_speed = 150;
+	type[13].health = 100;
+	type[13].atk = 20;
+	type[13].texture = load_texture("Assets/Enemy/Paprica.png", renderer);
+
+	type[14].width = 50;
+	type[14].height = 50;
+	type[14].movement_speed = 150;
+	type[14].health = 100;
+	type[14].atk = 20;
+	type[14].texture = load_texture("Assets/Enemy/Pig.png", renderer);
+
+	type[15].width = 50;
+	type[15].height = 50;
+	type[15].movement_speed = 150;
+	type[15].health = 100;
+	type[15].atk = 20;
+	type[15].texture = load_texture("Assets/Enemy/Rice.png", renderer);
+
+	type[16].width = 50;
+	type[16].height = 50;
+	type[16].movement_speed = 150;
+	type[16].health = 100;
+	type[16].atk = 20;
+	type[16].texture = load_texture("Assets/Enemy/RottenFishv1.png", renderer);
+
+	type[17].width = 50;
+	type[17].height = 50;
+	type[17].movement_speed = 150;
+	type[17].health = 100;
+	type[17].atk = 20;
+	type[17].texture = load_texture("Assets/Enemy/RottenFishv2.png", renderer);
+
+	type[18].width = 50;
+	type[18].height = 50;
+	type[18].movement_speed = 150;
+	type[18].health = 100;
+	type[18].atk = 20;
+	type[18].texture = load_texture("Assets/Enemy/Shrimp.png", renderer);
+
+	type[19].width = 50;
+	type[19].height = 50;
+	type[19].movement_speed = 150;
+	type[19].health = 100;
+	type[19].atk = 20;
+	type[19].texture = load_texture("Assets/Enemy/Tomato.png", renderer);
+
+	type[20].width = 50;
+	type[20].height = 50;
+	type[20].movement_speed = 150;
+	type[20].health = 100;
+	type[20].atk = 20;
+	type[20].texture = load_texture("Assets/Enemy/Yeast.png", renderer);
+
+	type[21].width = 100;
+	type[21].height = 100;
+	type[21].movement_speed = 150;
+	type[21].health = 100;
+	type[21].atk = 20;
+	type[21].texture = load_texture("Assets/Enemy/ChickenMiniBoss.png", renderer);
+
+	type[22].width = 100;
+	type[22].height = 100;
+	type[22].movement_speed = 150;
+	type[22].health = 100;
+	type[22].atk = 20;
+	type[22].texture = load_texture("Assets/Enemy/PigMiniBoss.png", renderer);
+
+	type[23].width = 150;
+	type[23].height = 200;
+	type[23].movement_speed = 150;
+	type[23].health = 100;
+	type[23].atk = 20;
+	type[23].texture = load_texture("Assets/Enemy/BeefFinalBoss.png", renderer);
 	
 }
 
 //initialize enemy per wave.
 void initialize_stage1_enemies() {
 
-	stage1.waves[0].Enemy_count[0] = 50; 
-	stage1.waves[0].Enemy_count[1] = 20;
-	stage1.waves[0].Enemy_count[2] = 30;
+	stage1.waves[0].Enemy_count[7] = 50; 
+	stage1.waves[0].Enemy_count[13] = 30;
 
-	stage1.waves[1].Enemy_count[0] = 70;
-	stage1.waves[1].Enemy_count[1] = 40;
-	stage1.waves[1].Enemy_count[2] = 40;
+	stage1.waves[1].Enemy_count[7] = 40;
+	stage1.waves[1].Enemy_count[13] = 40;
+	stage1.waves[1].Enemy_count[0] = 30;
 
-	stage1.waves[2].Enemy_count[0] = 70;
-	stage1.waves[2].Enemy_count[1] = 30;
-	stage1.waves[2].Enemy_count[3] = 1;
+	stage1.waves[2].Enemy_count[13] = 40;
+	stage1.waves[2].Enemy_count[0] = 40;
+	stage1.waves[2].Enemy_count[19] = 40;
 
-	stage1.waves[3].Enemy_count[0] = 90;
-	stage1.waves[3].Enemy_count[1] = 50;
-	stage1.waves[3].Enemy_count[2] = 30;
+	stage1.waves[3].Enemy_count[19] = 30;
+	stage1.waves[3].Enemy_count[3] = 50;
+	stage1.waves[3].Enemy_count[10] = 50;
 
-	stage1.waves[4].Enemy_count[0] = 90;
-	stage1.waves[4].Enemy_count[1] = 50;
-	stage1.waves[4].Enemy_count[2] = 40;
+	stage1.waves[4].Enemy_count[10] = 40;
+	stage1.waves[4].Enemy_count[3] = 40;
+	stage1.waves[4].Enemy_count[12] = 40;
+	stage1.waves[4].Enemy_count[19] = 40;
 
+	stage1.waves[5].Enemy_count[3] = 70;
+	stage1.waves[5].Enemy_count[12] = 50;
+	stage1.waves[5].Enemy_count[9] = 60;
+
+	stage1.waves[6].Enemy_count[4] = 70;
+	stage1.waves[6].Enemy_count[5] = 60;
+	stage1.waves[6].Enemy_count[9] = 90;
+
+	stage1.waves[7].Enemy_count[5] = 120;
+	stage1.waves[7].Enemy_count[0] = 120;
+
+	stage1.waves[8].Enemy_count[8] = 80;
+	stage1.waves[8].Enemy_count[20] = 90;
+	stage1.waves[8].Enemy_count[15] = 100;
+
+	stage1.waves[9].Enemy_count[11] = 60;
+	stage1.waves[9].Enemy_count[1] = 60;
+	stage1.waves[9].Enemy_count[18] = 60;
+
+	stage1.waves[10].Enemy_count[22] = 1;
+	stage1.waves[10].Enemy_count[14] = 49;
+
+	stage1.waves[11].Enemy_count[16] = 70;
+	stage1.waves[11].Enemy_count[17] = 70;
+	stage1.waves[11].Enemy_count[15] = 50;
+
+	stage1.waves[12].Enemy_count[1] = 100;
+	stage1.waves[12].Enemy_count[4] = 120;
+
+	stage1.waves[13].Enemy_count[19] = 60;
+	stage1.waves[13].Enemy_count[14] = 60;
+	stage1.waves[13].Enemy_count[18] = 80;
+
+	stage1.waves[14].Enemy_count[21] = 1;
+	stage1.waves[14].Enemy_count[2] = 49;
+	stage1.waves[14].Enemy_count[6] = 40;
+
+	stage1.waves[15].Enemy_count[2] = 50;
+	stage1.waves[15].Enemy_count[6] = 90;
+	stage1.waves[15].Enemy_count[20] = 50;
+
+	stage1.waves[16].Enemy_count[16] = 60;
+	stage1.waves[16].Enemy_count[17] = 60;
+	stage1.waves[16].Enemy_count[8] = 50;
+
+	stage1.waves[17].Enemy_count[11] = 40;
+	stage1.waves[17].Enemy_count[13] = 40;
+	stage1.waves[17].Enemy_count[10] = 50;
+	stage1.waves[17].Enemy_count[9] = 50;
+
+	stage1.waves[18].Enemy_count[3] = 60;
+	stage1.waves[18].Enemy_count[12] = 40;
+	stage1.waves[18].Enemy_count[15] = 30;
+	stage1.waves[18].Enemy_count[10] = 30;
+	stage1.waves[18].Enemy_count[4] = 40;
+
+	stage1.waves[19].Enemy_count[23] = 1;
 }
 
 //Spawn a wave of enemy
