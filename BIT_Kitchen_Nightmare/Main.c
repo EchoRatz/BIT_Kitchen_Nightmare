@@ -37,6 +37,13 @@ const Uint32 periodicInterval = 60000;
 Uint32 lastPeriodicCall = 0;
 int waveIndex = 0;
 
+//In game timer
+Uint32 timerStartTicks = 0; // Stores the ticks when the timer was started
+Uint32 timerPausedTicks = 0; // Stores the ticks when the timer was paused
+Uint32 accumulatedTime = 0; // Accumulated paused time
+bool timerPaused = false; // Is the timer paused?
+bool timerStarted = false; // Is the timer started?
+
 //Main_character
 int move_up = FALSE;
 int move_down = FALSE;
@@ -179,7 +186,13 @@ void apply_attack_damage_to_enemies();
 void render_enemy_damage(SDL_Renderer* renderer);
 void render_wave(SDL_Renderer* renderer);
 
-
+//In game timer function
+void startTimer();
+void stopTimer();
+void pauseTimer();
+void resumeTimer();
+Uint32 getTimerTime();
+void render_timer(SDL_Renderer* renderer);
 
 // Game loop functions
 int menu_process_input(void);
@@ -233,14 +246,17 @@ int main(int argc, char* argv[]) {
 			currentMusicTrack = MAIN_MENU_MUSIC; // Update the current music track
 			}
 
-				if(menu_process_input() == 1) gameState = GAME_STATE_GAMEPLAY;
+			if (menu_process_input() == 1) {
+				startTimer();
+				gameState = GAME_STATE_GAMEPLAY;
+			}
 				menu_render();
 				
 				break;
 
 			case GAME_STATE_GAMEPLAY: {
 
-				Uint32 currentTime = SDL_GetTicks();
+				Uint32 currentTime = getTimerTime();
 
 				if (currentMusicTrack != GAMEPLAY_MUSIC) {
 					AudioManager_LoadAndPlayMusic("Assets/Background Musics/Demo2.mp3", -1);
@@ -249,12 +265,13 @@ int main(int argc, char* argv[]) {
 				
 
 				if (gameplay_process_input() == 2) { // Indicates a request to enter pause menu
+					pauseTimer();
 					gameState = GAME_STATE_PAUSE_MENU;
 					AudioManager_PauseMusic(); //Pause the music
 					MusicWasPaused = 1; //Keep track of the music state
 				}
 				else {
-					Uint32 currentTime = SDL_GetTicks();
+					//Uint32 currentTime = SDL_GetTicks();
 					if (currentTime - lastPeriodicCall >= periodicInterval) {
 						if (waveIndex <= 19) {
 							spawn_wave(waveIndex);
@@ -270,6 +287,8 @@ int main(int argc, char* argv[]) {
 
 			case GAME_STATE_LOSE: {
 
+				stopTimer();
+
 				if (game_lose_process_input() == 1) {
 					reset_game_state();
 					gameState = GAME_STATE_MAIN_MENU;
@@ -280,6 +299,8 @@ int main(int argc, char* argv[]) {
 			}
 
 			case GAME_STATE_WIN:
+
+				stopTimer();
 
 				if (game_win_process_input() == 1) {
 					reset_game_state();
@@ -293,12 +314,14 @@ int main(int argc, char* argv[]) {
 				// Process pause menu input and render
 				int pauseInputResult = pause_process_input();
 				if (pauseInputResult == 1) { // Resume game
+					resumeTimer();
 					gameState = GAME_STATE_GAMEPLAY;
 					if(MusicWasPaused == 1){
 						AudioManager_ResumeMusic(); // Resume the music
 					}
 				}
 				else if (pauseInputResult == 2) { // Exit to main menu
+					stopTimer();
 					reset_game_state();
 					gameState = GAME_STATE_MAIN_MENU;
 					AudioManager_StopMusic(); // Stop the music
@@ -1043,6 +1066,44 @@ void render_wave(SDL_Renderer* renderer) {
 	TTF_CloseFont(font);
 }
 
+void render_timer(SDL_Renderer* renderer) {
+
+	TTF_Font* font = TTF_OpenFont("Assets/Font/PixeloidSans.ttf", 24);
+	SDL_Color color = { 200, 0, 0 };
+
+	if (!font) {
+		printf("Failed to load font: %s\n", TTF_GetError());
+		// Handle error (e.g., use a fallback font or exit)
+	}
+
+	Uint32 time = getTimerTime(); // Get the current timer time in milliseconds
+	int seconds = (time / 1000) % 60;
+	int minutes = (time / (1000 * 60)) % 60;
+
+	char timerText[32];
+	sprintf_s(timerText, sizeof(timerText), "Time: %02d:%02d", minutes, seconds);
+
+	SDL_Color textColor = { 255, 255, 255, 255 }; // White color
+	SDL_Surface* textSurface = TTF_RenderText_Solid(font, timerText, textColor);
+	if (!textSurface) {
+		printf("Unable to render wave text: %s\n", TTF_GetError());
+	}
+	else {
+		SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+		int textWidth = textSurface->w;
+		int textHeight = textSurface->h;
+		SDL_FreeSurface(textSurface);
+
+		// Define where you want the text to be rendered
+		SDL_Rect renderQuad = { 200, 50, textWidth, textHeight }; // Position it at the top-left corner, for example
+
+		SDL_RenderCopy(renderer, textTexture, NULL, &renderQuad);
+		SDL_DestroyTexture(textTexture); // Clean up texture now that we're done with it
+	}
+
+	TTF_CloseFont(font);
+}
+
 
 void update_camera() {
 	camera.x = Main_character.x - WINDOW_WIDTH / 2;
@@ -1175,6 +1236,9 @@ void gameplay_render() {
 		//render wave index
 		render_wave(renderer);
 
+		//render timer
+		render_timer(renderer);
+
 		int health_bar_width = 1920;
 		int health_bar_height = 40;
 		int health_bar_x = 0; // Top left corner of the health bar
@@ -1232,6 +1296,51 @@ void pause_render() {
 
 	SDL_RenderPresent(renderer);
 }
+
+//Timer function
+void startTimer() {
+	timerStarted = true;
+	timerPaused = false;
+	timerStartTicks = SDL_GetTicks();
+	timerPausedTicks = 0;
+}
+
+void stopTimer() {
+	timerStarted = false;
+	timerPaused = false;
+	timerStartTicks = 0;
+	timerPausedTicks = 0;
+	accumulatedTime = 0;
+}
+
+void pauseTimer() {
+	if (timerStarted && !timerPaused) {
+		timerPaused = true;
+		timerPausedTicks = SDL_GetTicks() - timerStartTicks;
+	}
+}
+
+void resumeTimer() {
+	if (timerStarted && timerPaused) {
+		timerPaused = false;
+		timerStartTicks = SDL_GetTicks() - timerPausedTicks;
+		timerPausedTicks = 0;
+	}
+}
+
+Uint32 getTimerTime() {
+	Uint32 time = 0;
+	if (timerStarted) {
+		if (timerPaused) {
+			time = timerPausedTicks;
+		}
+		else {
+			time = SDL_GetTicks() - timerStartTicks;
+		}
+	}
+	return time + accumulatedTime;
+}
+
 
 //Control framerate( 60 FPS )
 void cap_framerate(int* last_frame_time, float* delta_time) {
