@@ -148,7 +148,8 @@ enum GameState {
 	GAME_STATE_GAMEPLAY,
 	GAME_STATE_PAUSE_MENU,
 	GAME_STATE_WIN,
-	GAME_STATE_LOSE
+	GAME_STATE_LOSE,
+	GAME_STATE_CUTSCENE
 };
 enum GameState gameState = GAME_STATE_MAIN_MENU;
 
@@ -238,21 +239,21 @@ int main(int argc, char* argv[]) {
 
 		switch (gameState) {
 
-		case GAME_STATE_MAIN_MENU:
+			case GAME_STATE_MAIN_MENU:
 
-			// Play the main menu music
-			if (currentMusicTrack != MAIN_MENU_MUSIC) { // Check if the current music track is not the main menu music
-				AudioManager_LoadAndPlayMusic("Assets/Background Musics/Demo1.mp3", -1); // Load and play the main menu music
+				// Play the main menu music
+				if (currentMusicTrack != MAIN_MENU_MUSIC) { // Check if the current music track is not the main menu music
+					AudioManager_LoadAndPlayMusic("Assets/Background Musics/Demo1.mp3", -1); // Load and play the main menu music
 			
-			Mix_VolumeMusic(50); // Set the volume to 50%
-			currentMusicTrack = MAIN_MENU_MUSIC; // Update the current music track
-			}
+				Mix_VolumeMusic(50); // Set the volume to 50%
+				currentMusicTrack = MAIN_MENU_MUSIC; // Update the current music track
+				}
 
-			if (menu_process_input() == 1) {
-				startTimer();
-				gameState = GAME_STATE_GAMEPLAY;
-			}
-				menu_render();
+				if (menu_process_input() == 1) {
+					startTimer();
+					gameState = GAME_STATE_GAMEPLAY;
+				}
+					menu_render();
 				
 				break;
 
@@ -434,6 +435,7 @@ int gameplay_process_input() {
 
 	int mouseX, mouseY;
 	SDL_GetMouseState(&mouseX, &mouseY);
+	bool leftMouseButtonClicked = false;
 
 	mouseX += camera.x;
 	mouseY += camera.y;
@@ -445,6 +447,11 @@ int gameplay_process_input() {
 			return 0;
 		}else if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
 			return 2;
+		}	else if (event.type == SDL_MOUSEBUTTONDOWN) {
+
+				if (event.button.button == SDL_BUTTON_LEFT) {
+					leftMouseButtonClicked = true;
+				}
 		}
 
 		// Update facing direction based mouse direction
@@ -455,6 +462,22 @@ int gameplay_process_input() {
 			facing_left = 1; // Face left
 		}
 	}
+
+	//------------------------------------------------------
+	Uint32 buttons = SDL_GetMouseState(&mouseX, &mouseY);
+
+	if (leftMouseButtonClicked) {
+		Uint32 currentTime = SDL_GetTicks(); // Get the current time
+		if (currentTime - Main_character.attacks[0].lastAttackTime >= Main_character.attacks[0].cooldown) {
+			// Perform the attack
+			// For example: attack();
+				updated_attacks(currentTime);
+			// Update the last attack time
+			Main_character.attacks[0].lastAttackTime = currentTime;
+		}
+	}
+
+	//------------------------------------------------------
 
 	// Update movement directions based on key states
 	move_up = state[SDL_SCANCODE_W];
@@ -1062,7 +1085,7 @@ void initialize_attacks(void) {
 	Main_character.attacks[0].isActive = false;
 	Main_character.attacks[0].isRender = false;
 	Main_character.attacks[0].isHave = true;
-	Main_character.attacks[0].cooldown = 2000; // Example: 2 seconds
+	Main_character.attacks[0].cooldown = 500; // Example: 2 seconds
 	Main_character.attacks[0].lastAttackTime = 0;
 	Main_character.attacks[0].lastTimeRender = 0;
 	Main_character.attacks[0].damage = 50; // Example damage
@@ -1206,6 +1229,8 @@ void apply_attack_damage_to_enemies() {
 				
 			}
 		}
+
+		attack->isActive = false; //additional
 	}
 }
 
@@ -1263,7 +1288,7 @@ void render_wave(SDL_Renderer* renderer) {
 	char waveInfo[100];
 	sprintf_s(waveInfo, sizeof(waveInfo), "Wave : %d", waveIndex );
 
-	SDL_Color textColor = { 255, 255, 255, 255 }; // White color
+	SDL_Color textColor = { 0, 0, 0, 255 }; // White color
 	SDL_Surface* textSurface = TTF_RenderText_Solid(font, waveInfo, textColor);
 	if (!textSurface) {
 		printf("Unable to render wave text: %s\n", TTF_GetError());
@@ -1301,7 +1326,7 @@ void render_timer(SDL_Renderer* renderer) {
 	char timerText[32];
 	sprintf_s(timerText, sizeof(timerText), "Time: %02d:%02d", minutes, seconds);
 
-	SDL_Color textColor = { 255, 255, 255, 255 }; // White color
+	SDL_Color textColor = { 0, 0, 0, 255 }; // White color
 	SDL_Surface* textSurface = TTF_RenderText_Solid(font, timerText, textColor);
 	if (!textSurface) {
 		printf("Unable to render wave text: %s\n", TTF_GetError());
@@ -1339,9 +1364,9 @@ void gameplay_update(float delta_time) {
 	Uint32 currentTime = SDL_GetTicks();
 
 	// Process auto-attack trigger
-	updated_attacks(currentTime);
+	//updated_attacks(currentTime);
 	update_enemies(delta_time);
-	updated_attacks(currentTime);
+	//updated_attacks(currentTime);
 	apply_attack_damage_to_enemies();
 	check_collision_and_apply_damage(delta_time);
 
