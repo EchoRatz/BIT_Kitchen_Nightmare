@@ -264,9 +264,25 @@ int main(int argc, char* argv[]) {
 				const int totalFrames = 16; // Total number of frames in the video
 				const int fps = 3; // Frames per second
 				char framePath[256];
+				bool skipCutscene = false;
 				SDL_Texture* frameTexture = NULL;
 
-				for (int i = 0; i < totalFrames; ++i) {
+				for (int i = 0; i < totalFrames && !skipCutscene; ++i) {
+
+					SDL_Event event;
+					while (SDL_PollEvent(&event)) {
+						if (event.type == SDL_QUIT) {
+							game_is_running = FALSE;
+							skipCutscene = true;
+							break;
+						}
+						else if (event.type == SDL_KEYDOWN) {
+							if (event.key.keysym.sym == SDLK_SPACE) {
+								skipCutscene = true;
+							}
+						}
+					}
+
 					// Construct the path for the next frame
 					snprintf(framePath, sizeof(framePath), "Assets/Cutscene/frame%d.png", i);
 
@@ -287,6 +303,7 @@ int main(int argc, char* argv[]) {
 	
 				}
 
+				reset_game_state();
 				startTimer();
 				gameState = GAME_STATE_GAMEPLAY;
 
