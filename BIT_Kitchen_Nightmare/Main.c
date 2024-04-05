@@ -25,6 +25,7 @@ SDL_Texture* game_over_texture = NULL;
 SDL_Texture* congrates_texture = NULL;
 SDL_Texture* retry_texture = NULL;
 SDL_Texture* back_to_menu_texture = NULL;
+SDL_Texture* health_bar_texture = NULL;
 
 //Pause menu
 SDL_Texture* resume_button_texture = NULL;
@@ -215,6 +216,7 @@ void cap_framerate(int* last_frame_time, float* delta_time); //FPS
 
 // Rendering helpers
 void render_health_bar(SDL_Renderer* renderer, float health, float max_health, int x, int y, int width, int height);
+void render_health_text(SDL_Renderer* renderer, float currentHealth, int maxHealth);
 
 // Cleanup
 void destroy_window();
@@ -251,7 +253,7 @@ int main(int argc, char* argv[]) {
 
 				if (menu_process_input() == 1) {
 					//startTimer();
-					gameState = GAME_STATE_CUTSCENE;
+					gameState = GAME_STATE_CUTSCENE; //just for debug
 				}
 					menu_render();
 				
@@ -652,6 +654,9 @@ void setup() {
 	congrates_texture = load_texture("Assets/Result/congrates/congrates.png", renderer);
 	retry_texture = load_texture("Assets/Result/game_over/retry.png", renderer);
 	back_to_menu_texture = load_texture("Assets/Result/game_over/back_to_menu.png", renderer);
+
+	//In game UI
+	health_bar_texture = load_texture("Assets/UI/Health.png", renderer);
 
 	gameplay_setup();
 }
@@ -1309,7 +1314,7 @@ void render_enemy_damage(SDL_Renderer* renderer) {
 
 void render_wave(SDL_Renderer* renderer) {
 
-	TTF_Font* font = TTF_OpenFont("Assets/Font/PixeloidSans.ttf", 24);
+	TTF_Font* font = TTF_OpenFont("Assets/Font/PixeloidSans.ttf", 44);
 	SDL_Color color = { 200, 0, 0 };
 
 	if (!font) {
@@ -1320,7 +1325,7 @@ void render_wave(SDL_Renderer* renderer) {
 	char waveInfo[100];
 	sprintf_s(waveInfo, sizeof(waveInfo), "Wave : %d", waveIndex );
 
-	SDL_Color textColor = { 0, 0, 0, 255 }; // White color
+	SDL_Color textColor = { 0, 0, 0, 255 }; // Black color
 	SDL_Surface* textSurface = TTF_RenderText_Solid(font, waveInfo, textColor);
 	if (!textSurface) {
 		printf("Unable to render wave text: %s\n", TTF_GetError());
@@ -1332,7 +1337,7 @@ void render_wave(SDL_Renderer* renderer) {
 		SDL_FreeSurface(textSurface);
 
 		// Define where you want the text to be rendered
-		SDL_Rect renderQuad = { 20, 50, textWidth, textHeight }; // Position it at the top-left corner, for example
+		SDL_Rect renderQuad = { 40, 40, textWidth, textHeight }; // Position it at the top-left corner, for example
 
 		SDL_RenderCopy(renderer, textTexture, NULL, &renderQuad);
 		SDL_DestroyTexture(textTexture); // Clean up texture now that we're done with it
@@ -1342,8 +1347,8 @@ void render_wave(SDL_Renderer* renderer) {
 }
 
 void render_timer(SDL_Renderer* renderer) {
-
-	TTF_Font* font = TTF_OpenFont("Assets/Font/PixeloidSans.ttf", 24);
+	
+	TTF_Font* font = TTF_OpenFont("Assets/Font/PixeloidSans.ttf", 44);
 	SDL_Color color = { 200, 0, 0 };
 
 	if (!font) {
@@ -1370,7 +1375,7 @@ void render_timer(SDL_Renderer* renderer) {
 		SDL_FreeSurface(textSurface);
 
 		// Define where you want the text to be rendered
-		SDL_Rect renderQuad = { 200, 50, textWidth, textHeight }; // Position it at the top-left corner, for example
+		SDL_Rect renderQuad = { 1150, 40, textWidth, textHeight }; // Position it at the top-left corner, for example
 
 		SDL_RenderCopy(renderer, textTexture, NULL, &renderQuad);
 		SDL_DestroyTexture(textTexture); // Clean up texture now that we're done with it
@@ -1421,16 +1426,57 @@ void gameplay_update(float delta_time) {
 }
 
 void render_health_bar(SDL_Renderer* renderer, float health, float max_health, int x, int y, int width, int height) {
-	// Background of the health bar (usually red or black)
-	SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Red
-	SDL_Rect bg_rect = { x, y, width, height };
-	SDL_RenderFillRect(renderer, &bg_rect);
 
 	// Foreground of the health bar showing current health
 	float health_percentage = health / max_health;
 	SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // Green
 	SDL_Rect fg_rect = { x, y, (int)(width * health_percentage), height };
 	SDL_RenderFillRect(renderer, &fg_rect);
+
+	SDL_Rect health_bar = { 1450, 20, 420, 105 };
+	SDL_RenderCopy(renderer, health_bar_texture, NULL, &health_bar);
+
+	// Background of the health bar (usually red or black)
+	//SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Red
+	//SDL_Rect bg_rect = { x, y, width, height };
+	//SDL_RenderFillRect(renderer, &bg_rect);
+
+}
+
+void render_health_text(SDL_Renderer* renderer, float currentHealth, int maxHealth) {
+
+	TTF_Font* font = TTF_OpenFont("Assets/Font/PixeloidSans.ttf", 30);
+	SDL_Color color = { 200, 0, 0 };
+
+	if (!font) {
+		printf("Failed to load font: %s\n", TTF_GetError());
+		// Handle error (e.g., use a fallback font or exit)
+	}
+	char healthText[50]; // Buffer for health text
+	snprintf(healthText, sizeof(healthText), "%.0f / %d", currentHealth, maxHealth); // Format the text
+
+	SDL_Color textColor = { 0, 0, 0, 255 }; // White color
+	SDL_Surface* textSurface = TTF_RenderText_Solid(font, healthText, textColor);
+	if (!textSurface) {
+		printf("Unable to create text surface: %s\n", TTF_GetError());
+		return;
+	}
+
+	SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+	if (!textTexture) {
+		printf("Unable to create text texture: %s\n", SDL_GetError());
+		SDL_FreeSurface(textSurface);
+		return;
+	}
+
+	// Set the position and size for the text (adjust as needed)
+	SDL_Rect renderQuad = { 1700, 55, textSurface->w, textSurface->h };
+
+	SDL_RenderCopy(renderer, textTexture, NULL, &renderQuad);
+
+	// Clean up
+	SDL_FreeSurface(textSurface);
+	SDL_DestroyTexture(textTexture);
 }
 
 void menu_render() {
@@ -1514,11 +1560,13 @@ void gameplay_render() {
 		//render timer
 		render_timer(renderer);
 
-		int health_bar_width = 1920;
-		int health_bar_height = 40;
-		int health_bar_x = 0; // Top left corner of the health bar
-		int health_bar_y = 0; // Adjusted to be at the bottom of the window
+		int health_bar_width = 340;
+		int health_bar_height = 55;
+		int health_bar_x = 1525; // Top left corner of the health bar
+		int health_bar_y = 45; // Adjusted to be at the bottom of the window
 		render_health_bar(renderer, Main_character.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
+
+		render_health_text(renderer, Main_character.health, 100);
 
 	SDL_RenderPresent(renderer);
 }
