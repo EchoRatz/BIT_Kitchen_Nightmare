@@ -760,15 +760,14 @@ void initialize_enemies(SDL_Renderer* renderer) {
 	type[1].health = 150;
 	type[1].atk = 30;
 	type[1].texture = load_texture("Assets/Enemy/Broccoli.png", renderer);
-
-	//---------------------------------------
+	
 	type[2].width = 50;
 	type[2].height = 50;
 	type[2].movement_speed = 150;
 	type[2].health = 100;
 	type[2].atk = 20;
 	type[2].texture = load_texture("Assets/Enemy/Chicken.png", renderer);
-	//---------------------------------------------
+	
 	type[3].width = 50;
 	type[3].height = 50;
 	type[3].movement_speed = 130;
@@ -797,8 +796,8 @@ void initialize_enemies(SDL_Renderer* renderer) {
 	type[6].atk = 20;
 	type[6].texture = load_texture("Assets/Enemy/DuckEgg.png", renderer);
 
-	type[7].width = 50;
-	type[7].height = 50;
+	type[7].width = 88;
+	type[7].height = 120;
 	type[7].movement_speed = 150;
 	type[7].health = 100;
 	type[7].atk = 20;
