@@ -17,10 +17,9 @@ SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 SDL_Texture* map_texture = NULL;
 SDL_Texture* start_button_texture = NULL;
-SDL_Texture* setting_button_texture = NULL;
-SDL_Texture* collection_button_texture = NULL;
-SDL_Texture* shop_button_texture = NULL;
 SDL_Texture* menu_background_texture = NULL;
+SDL_Texture* tutorial_button_texture = NULL;
+SDL_Texture* tutorial_background_texture = NULL;
 SDL_Texture* game_over_texture = NULL;
 SDL_Texture* congrates_texture = NULL;
 SDL_Texture* retry_texture = NULL;
@@ -167,7 +166,8 @@ enum GameState {
 	GAME_STATE_PAUSE_MENU,
 	GAME_STATE_WIN,
 	GAME_STATE_LOSE,
-	GAME_STATE_CUTSCENE
+	GAME_STATE_CUTSCENE,
+	GAME_STATE_TUTORIAL
 };
 enum GameState gameState = GAME_STATE_MAIN_MENU;
 
@@ -228,6 +228,8 @@ void game_lose_state_render(void);
 int game_win_process_input(void);
 void game_win_state_render(void);
 void pause_render(void);
+int tutorial_process_input();
+void tutorial_render();
 void update_camera(void); 
 void cap_framerate(int* last_frame_time, float* delta_time); //FPS
 void process_exp_drops();
@@ -273,12 +275,27 @@ int main(int argc, char* argv[]) {
 				currentMusicTrack = MAIN_MENU_MUSIC; // Update the current music track
 				}
 
-				if (menu_process_input() == 1) {
+				int menu_option = menu_process_input();
+
+				if (menu_option == 1) {
 					//startTimer();
 					gameState = GAME_STATE_CUTSCENE; //just for debug
 				}
+				else if (menu_option == 2) {
+					gameState = GAME_STATE_TUTORIAL;
+				}
 					menu_render();
 				
+				break;
+
+			case GAME_STATE_TUTORIAL:
+
+				if (tutorial_process_input() == 1) {
+					gameState = GAME_STATE_MAIN_MENU;
+				}
+
+				tutorial_render();
+
 				break;
 
 			case GAME_STATE_CUTSCENE:{
@@ -506,6 +523,15 @@ int menu_process_input() {
 				return 1; // Start the game
 			}
 		}
+
+		if (event.type == SDL_MOUSEBUTTONDOWN) {
+			int x, y;
+			SDL_GetMouseState(&x, &y);
+			if (x >= 830 && x <= 1089 && y >= 700 && y <= 847) { // If the mouse click is within the start button area
+				AudioManager_PlayEffect(SOUND_CLICK);
+				return 2; // Enter tutorial
+			}
+		}
 		
 	}
 
@@ -663,6 +689,30 @@ int pause_process_input() {
 	return 3;
 }
 
+int tutorial_process_input() {
+
+	const Uint8* state = SDL_GetKeyboardState(NULL);
+	SDL_Event event;
+
+	while (SDL_PollEvent(&event)) {
+		if (event.type == SDL_QUIT) {
+			game_is_running = FALSE;
+		}
+
+		if (event.type == SDL_MOUSEBUTTONDOWN) {
+			int x, y;
+			SDL_GetMouseState(&x, &y);
+			if (x >= 875 && x <= 1071 && y >= 815 && y <= 880) { // If the mouse click is within the start button area
+				AudioManager_PlayEffect(SOUND_CLICK);
+				return 1; // Start the game
+			}
+		}
+
+	}
+
+	return 0;
+}
+
 SDL_Texture* load_texture(const char* filename, SDL_Renderer* renderer) {
 	SDL_Surface* surface = IMG_Load(filename);
 	if (!surface) {
@@ -691,10 +741,12 @@ void setup() {
 	
 	//Lobby
 	start_button_texture = load_texture("Assets/Lobby/Button1-Play.png", renderer);
-	setting_button_texture = load_texture("Assets/Lobby/Button2-Setting.png", renderer);
-	collection_button_texture = load_texture("Assets/Lobby/Button3-Collection.png", renderer);
-	shop_button_texture = load_texture("Assets/Lobby/Button4-Shop.png", renderer);
 	menu_background_texture = load_texture("Assets/Lobby/main_menu_background.png", renderer);
+	tutorial_button_texture = load_texture("Assets/Lobby/Tutorial.png", renderer);
+
+	//tutorial
+	tutorial_background_texture = load_texture("Assets/Tutorial/TUTORIAL.png", renderer);
+
 
 	//Pasue menu
 	resume_button_texture = load_texture("Assets/Pause_menu/Resume_button.png", renderer);
@@ -1697,14 +1749,8 @@ void menu_render() {
 		SDL_Rect start_button_rect = { 780, 550, 360, 98 };
 		SDL_RenderCopy(renderer, start_button_texture, NULL, &start_button_rect);
 
-		SDL_Rect setting_button_rect = { 784, 675, 353, 88 };
-		SDL_RenderCopy(renderer, setting_button_texture, NULL, &setting_button_rect);
-
-		SDL_Rect collection_button_rect = { 784, 788, 353, 88 };
-		SDL_RenderCopy(renderer, collection_button_texture, NULL, &collection_button_rect);
-
-		SDL_Rect shop_button_rect = { 784, 901, 353, 88 };
-		SDL_RenderCopy(renderer, shop_button_texture, NULL, &shop_button_rect);
+		SDL_Rect tutorial_button_rect = { 808, 700, 295, 47 };
+		SDL_RenderCopy(renderer, tutorial_button_texture, NULL, &tutorial_button_rect);
 
 	
 	SDL_RenderPresent(renderer);
@@ -1784,6 +1830,17 @@ void gameplay_render() {
 
 
 	SDL_RenderPresent(renderer);
+}
+
+void tutorial_render() {
+
+	SDL_RenderClear(renderer);
+
+	SDL_Rect tutorial_background_rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+	SDL_RenderCopy(renderer, tutorial_background_texture, NULL, &tutorial_background_rect);
+
+	SDL_RenderPresent(renderer);
+	
 }
 
 void game_lose_state_render() {
