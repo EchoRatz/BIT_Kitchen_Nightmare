@@ -161,6 +161,7 @@ typedef enum {
 	GAMEPLAY_MUSIC,
 	GAMEWIN_MUSIC,
 	GAMEOVER_MUSIC,
+	CUTSCENE_MUSIC,
 } MusicTrack;
 
 MusicTrack currentMusicTrack = NONE_MUSIC;
@@ -260,6 +261,13 @@ int main(int argc, char* argv[]) {
 				break;
 
 			case GAME_STATE_CUTSCENE:{
+
+				// Play the main menu music
+				if (currentMusicTrack != CUTSCENE_MUSIC) { // Check if the current music track is not the main menu music
+					AudioManager_LoadAndPlayMusic("Assets/Background Musics/Cutscene.mp3", -1); // Load and play the main menu music
+					
+					currentMusicTrack = CUTSCENE_MUSIC; // Update the current music track
+				}
 
 				const int totalFrames = 16; // Total number of frames in the video
 				const int fps = 3; // Frames per second
@@ -473,6 +481,7 @@ int menu_process_input() {
 			int x, y;
 			SDL_GetMouseState(&x, &y);
 			if (x >= 780 && x <= 1140 && y >= 550 && y <= 648) { // If the mouse click is within the start button area
+				AudioManager_PlayEffect(SOUND_CLICK);
 				return 1; // Start the game
 			}
 		}
@@ -556,6 +565,7 @@ int game_lose_process_input() {
 			int x, y;
 			SDL_GetMouseState(&x, &y);
 			if (x >= 630 && x <= 1331 && y >= 675 && y <= 763) { // If the mouse click is within menu button area
+				AudioManager_PlayEffect(SOUND_CLICK);
 				return 1; // to menu
 			}
 		}
@@ -580,6 +590,7 @@ int game_win_process_input() {
 			int x, y;
 			SDL_GetMouseState(&x, &y);
 			if (x >= 630 && x <= 1331 && y >= 600 && y <= 688) { // If the mouse click is within the start button area
+				AudioManager_PlayEffect(SOUND_CLICK);
 				return 1; // Start the game
 			}
 		}
@@ -617,10 +628,12 @@ int pause_process_input() {
 				if (mouseX >= resume_button_rect.x && mouseX <= resume_button_rect.x + resume_button_rect.w &&
 					mouseY >= resume_button_rect.y && mouseY <= resume_button_rect.y + resume_button_rect.h) {
 					// Resume button was clicked
+					AudioManager_PlayEffect(SOUND_CLICK);
 					return 1;
 				}else if (mouseX >= exit_button_rect.x && mouseX <= exit_button_rect.x + exit_button_rect.w &&
 					mouseY >= exit_button_rect.y && mouseY <= exit_button_rect.y + exit_button_rect.h){
 					// Exit button was clicked
+					AudioManager_PlayEffect(SOUND_CLICK);
 					return 2;
 					}	
 			}
