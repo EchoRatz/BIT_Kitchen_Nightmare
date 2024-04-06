@@ -26,6 +26,11 @@ SDL_Texture* congrates_texture = NULL;
 SDL_Texture* retry_texture = NULL;
 SDL_Texture* back_to_menu_texture = NULL;
 SDL_Texture* health_bar_texture = NULL;
+SDL_Texture* exp_texture = NULL;
+SDL_Texture* Food1_texture = NULL;
+SDL_Texture* Food2_texture = NULL;
+SDL_Texture* Food3_texture = NULL;
+SDL_Texture* Currency_texture = NULL;
 
 //Pause menu
 SDL_Texture* resume_button_texture = NULL;
@@ -88,6 +93,8 @@ struct character {
 	int haveAttacks; // Number of attacks currently active
 	int type;
 	SDL_Texture* texture[2];
+	int level;
+	int exp;
 } Main_character;
 
 //Each enemy type stat
@@ -100,6 +107,15 @@ typedef struct {
 	SDL_Texture* texture;
 } Enemy_type;
 
+typedef struct {
+
+	int isActive;
+	SDL_Rect rect;
+	int type;
+} Drop;
+
+int typeRand;
+
 //Store each enemy in the game;
 typedef struct {
 	SDL_Rect rect; // Position and size
@@ -108,6 +124,7 @@ typedef struct {
 	int isActive; // 1 if active, 0 if not
 	int last_damage_taken;
 	Uint32 damage_display_timer;
+	Drop drop;
 } Enemy;
 
 //Wave data
@@ -213,11 +230,15 @@ void game_win_state_render(void);
 void pause_render(void);
 void update_camera(void); 
 void cap_framerate(int* last_frame_time, float* delta_time); //FPS
+void process_exp_drops();
 
 
 // Rendering helpers
 void render_health_bar(SDL_Renderer* renderer, float health, float max_health, int x, int y, int width, int height);
 void render_health_text(SDL_Renderer* renderer, float currentHealth, int maxHealth);
+void render_drops(SDL_Renderer* renderer);
+void render_exp_progress_bar(SDL_Renderer* renderer, float exp, int level, int x, int y, int width, int height);
+void render_level(SDL_Renderer* renderer, int level);
 
 // Cleanup
 void destroy_window();
@@ -688,6 +709,14 @@ void setup() {
 	//In game UI
 	health_bar_texture = load_texture("Assets/UI/Health.png", renderer);
 
+	//Drop
+	exp_texture = load_texture("Assets/Drop/Coffeebeans.png", renderer);
+	Food1_texture = load_texture("Assets/Drop/HealthDrops/Small.png", renderer);
+	Food2_texture = load_texture("Assets/Drop/HealthDrops/Medium.png", renderer);
+	Food3_texture = load_texture("Assets/Drop/HealthDrops/Large.png", renderer);
+	//Currency_texture = load_texture("Assets/Drop/small.png", renderer);
+
+
 	gameplay_setup();
 }
 
@@ -701,6 +730,8 @@ void gameplay_setup() {
 	Main_character.movement_speed = 300.0f;
 	Main_character.health = 100.0f; // maximum health is 100
 	Main_character.type = 1; // Boy or girl
+	Main_character.level = 1;
+	Main_character.exp = 0;
 
 	//Load texture.
 	if (Main_character.type == 1) {
@@ -1025,6 +1056,35 @@ void spawn_wave(int waveIndex) {
 					Enemies[j].type = typeIndex;
 					Enemies[j].isActive = 1;
 					Enemies[j].currentHealth = type[typeIndex].health;
+					Enemies[j].drop.isActive = 0;
+					
+					typeRand = rand() % 80;// random type
+
+					if (typeRand < 2) Enemies[j].drop.type = 0; // exp
+					if (typeRand == 0) Enemies[j].drop.type = 1; // Food 1
+					if (typeRand == 1) Enemies[j].drop.type = 2; // Food 2
+					if (typeRand == 2) Enemies[j].drop.type = 3; // Food 3
+					//if (typeRand = 3) Enemies[j].drop.type = 4; // Currency
+
+					if (Enemies[j].drop.type == 0) {
+						Enemies[j].drop.rect.h = 20;
+						Enemies[j].drop.rect.w = 20;
+					}	
+					else if (Enemies[j].drop.type == 1) {
+						Enemies[j].drop.rect.h = 30;
+						Enemies[j].drop.rect.w = 30;
+					} 
+					else if (Enemies[j].drop.type == 2) {
+						Enemies[j].drop.rect.h = 40;
+						Enemies[j].drop.rect.w = 40;
+					}
+					else if (Enemies[j].drop.type == 3) {
+						Enemies[j].drop.rect.h = 50;
+						Enemies[j].drop.rect.w = 50;
+					}
+					
+
+
 					
 					randPos = rand() % 8; //Random postion for enemy's spawn
 						
@@ -1120,6 +1180,71 @@ void render_enemies(SDL_Renderer* renderer) {
 		}
 	}
 }
+
+void render_drops(SDL_Renderer* renderer) {
+
+	for (int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
+		
+		if (Enemies[i].drop.isActive) {
+
+			SDL_Rect drop_rect = {
+				Enemies[i].drop.rect.x - (int)camera.x,
+				Enemies[i].drop.rect.y - (int)camera.y,
+				Enemies[i].drop.rect.w,
+				Enemies[i].drop.rect.h
+			};
+
+			if (Enemies[i].drop.type == 0)	SDL_RenderCopy(renderer, exp_texture, NULL, &drop_rect);
+			if (Enemies[i].drop.type == 1)	SDL_RenderCopy(renderer, Food1_texture, NULL, &drop_rect);
+			if (Enemies[i].drop.type == 2)	SDL_RenderCopy(renderer, Food2_texture, NULL, &drop_rect);
+			if (Enemies[i].drop.type == 3)	SDL_RenderCopy(renderer, Food3_texture, NULL, &drop_rect);
+		}
+	}
+}
+
+void process_exp_drops() {
+	for (int i = 0; i < MAX_ENEMIES_STAGE1; ++i) {
+		if (Enemies[i].drop.isActive) {
+			SDL_Rect mainCharacterRect = { Main_character.x, Main_character.y, Main_character.width, Main_character.height };
+			SDL_Rect dropRect = { Enemies[i].drop.rect.x, Enemies[i].drop.rect.y, Enemies[i].drop.rect.w, Enemies[i].drop.rect.h };
+
+			if (SDL_HasIntersection(&mainCharacterRect, &dropRect)) {
+				// Collision detected, collect the drop
+
+				Enemies[i].drop.isActive = 0; // Mark the drop as inactive
+				if (Enemies[i].drop.type == 0)	Main_character.exp += 1; // Increment the main character's level
+				if (Enemies[i].drop.type == 1)	Main_character.health += 10; // Increment the main character's level
+				if (Enemies[i].drop.type == 2)	Main_character.health += 25; // Increment the main character's level
+				if (Enemies[i].drop.type == 3)	Main_character.health += 50; // Increment the main character's level
+
+
+				if (Main_character.exp >= 200) {
+					Main_character.level += 1;
+					Main_character.exp = 0; // Reset EXP after leveling up
+				}
+
+				if (Main_character.health >= 100) {
+					Main_character.health = 100;
+				}
+			}
+		}
+	}
+}
+
+void render_exp_progress_bar(SDL_Renderer* renderer, float exp, int level, int x, int y, int width, int height) {
+	// Background of the EXP bar
+	SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255); // White for background
+	SDL_Rect bgRect = { x, y, width, height };
+	SDL_RenderFillRect(renderer, &bgRect);
+
+	// Foreground of the EXP bar showing current EXP
+	float expPercentage = exp / 200.0f; // Assuming 200 EXP is needed for a level-up
+	SDL_SetRenderDrawColor(renderer, 51, 171, 249, 255); // Blue for EXP
+	SDL_Rect fgRect = { x, y, (int)(width * expPercentage), height };
+	SDL_RenderFillRect(renderer, &fgRect);
+}
+
+
 
 void check_collision_and_apply_damage(float delta_time) {
 	// Assuming the Main_character's rect is set up like this
@@ -1286,6 +1411,12 @@ void apply_attack_damage_to_enemies() {
 				if (enemy->currentHealth <= 0) {
 					enemy->isActive = false; // Enemy defeated
 					// Additional logic for handling defeated enemy (e.g., scoring)
+					enemy->drop.isActive = 1;
+					enemy->drop.rect.x = enemy->rect.x + (enemy->rect.w - enemy->drop.rect.w) / 2;
+					enemy->drop.rect.y = enemy->rect.y + (enemy->rect.h - enemy->drop.rect.h) / 2;
+					
+
+
 					killed_enemy++;
 					if (enemy->type == 23 && enemy -> isActive == 0) {
 						gameState = GAME_STATE_WIN;
@@ -1435,6 +1566,7 @@ void gameplay_update(float delta_time) {
 	//updated_attacks(currentTime);
 	apply_attack_damage_to_enemies();
 	check_collision_and_apply_damage(delta_time);
+	process_exp_drops();
 
 	//Main_character movement
 	if (move_up) Main_character.y -= Main_character.movement_speed * delta_time;
@@ -1508,6 +1640,51 @@ void render_health_text(SDL_Renderer* renderer, float currentHealth, int maxHeal
 	SDL_DestroyTexture(textTexture);
 }
 
+void render_level(SDL_Renderer* renderer, int level) {
+	// Load the font
+	TTF_Font* font = TTF_OpenFont("Assets/Font/PixeloidSans.ttf", 30); // Smaller font size for the level display
+	if (!font) {
+		printf("Failed to load font: %s\n", TTF_GetError());
+		return;
+	}
+
+	// Create the text to display the level
+	char levelText[50]; // Buffer for level text
+	snprintf(levelText, sizeof(levelText), "Level: %d", level); // Format the text
+
+	// Set text color
+	SDL_Color textColor = { 0, 0, 0, 255 }; // Example: White color
+
+	// Create a surface from the text
+	SDL_Surface* textSurface = TTF_RenderText_Solid(font, levelText, textColor);
+	if (!textSurface) {
+		printf("Unable to create text surface: %s\n", TTF_GetError());
+		TTF_CloseFont(font);
+		return;
+	}
+
+	// Create a texture from the surface
+	SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+	if (!textTexture) {
+		printf("Unable to create text texture: %s\n", SDL_GetError());
+		SDL_FreeSurface(textSurface);
+		TTF_CloseFont(font);
+		return;
+	}
+
+	// Calculate the position and size for the level text
+	SDL_Rect renderQuad = { 1375, 130, textSurface->w, textSurface->h }; // Position below the timer
+
+	// Copy the texture to the renderer
+	SDL_RenderCopy(renderer, textTexture, NULL, &renderQuad);
+
+	// Clean up
+	SDL_FreeSurface(textSurface);
+	SDL_DestroyTexture(textTexture);
+	TTF_CloseFont(font);
+}
+
+
 void menu_render() {
 
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Optional, depending on if your map covers the whole screen
@@ -1555,6 +1732,8 @@ void gameplay_render() {
 			SDL_RenderCopy(renderer, map_texture, &srcRect, &destRect);
 		}
 
+		render_drops(renderer);
+
 		Uint32 current_time = SDL_GetTicks();
 		if (current_time - last_switch_time >= 250) { // Check if 0.5 seconds have passed
 			render_motion = !render_motion; // Toggle the motion flag
@@ -1594,8 +1773,15 @@ void gameplay_render() {
 		int health_bar_x = 1525; // Top left corner of the health bar
 		int health_bar_y = 45; // Adjusted to be at the bottom of the window
 		render_health_bar(renderer, Main_character.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
-
 		render_health_text(renderer, Main_character.health, 100);
+
+		int expBarWidth = 340; // Example width, adjust as needed
+		int expBarHeight = 30; // Example height, adjust as needed
+		int expBarX = 1525; // Example X position, adjust as needed
+		int expBarY = 130; // Example Y position, adjust as needed
+		render_exp_progress_bar(renderer, Main_character.exp, Main_character.level, expBarX, expBarY, expBarWidth, expBarHeight);
+		render_level(renderer, Main_character.level);
+
 
 	SDL_RenderPresent(renderer);
 }
