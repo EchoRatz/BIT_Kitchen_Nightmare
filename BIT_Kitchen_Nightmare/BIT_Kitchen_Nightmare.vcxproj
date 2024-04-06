@@ -73,8 +73,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\lib\SDL2_ttf\include;C:\lib\SDL2_mixer\include;C:\lib\SDL2_image\include;C:\lib\SDL2\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\lib\SDL2_ttf\lib\x64;C:\lib\SDL2_mixer\lib\x64;C:\lib\SDL2_image\lib\x64;C:\lib\SDL2\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\SDL2\include;C:\SDL2_image\include;C:\SDL2_mixer\include;C:\SDL2_ttf\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\SDL2_ttf\lib\x64;C:\SDL2_mixer\lib\x64;C:\SDL2_image\lib\x64;C:\SDL2\lib\x64;$(LibraryPath)</LibraryPath>
     <LibraryWPath>$(LibraryWPath)</LibraryWPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -123,8 +123,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_image.lib;SDL2_mixer.lib;SDL2_ttf.lib;version.lib;imm32.lib;winmm.lib;setupapi.lib;libcmt.lib;libucrtd.lib;SDL2_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\lib\SDL2_ttf\x64;C:\lib\SDL2_mixer\x64;C:\lib\SDL2_image\x64;C:\lib\SDL2\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_image.lib;SDL2_mixer.lib;SDL2_ttf.lib;version.lib;imm32.lib;winmm.lib;setupapi.lib;libcmt.lib;libucrtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\SDL2\lib\x64;C:\SDL2_image\lib\x64;C:\SDL2_mixer\lib\x64;C:\SDL2_ttf\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Lib>
       <AdditionalDependencies>SDL2.lib;SDL2_main.lib;SDL2_image.lib;version.lib;imm32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
