@@ -96,6 +96,8 @@ struct character {
 	int exp;
 } Main_character;
 
+int maxHealth;
+
 //Each enemy type stat
 typedef struct {
 	float width;
@@ -781,9 +783,12 @@ void gameplay_setup() {
 	Main_character.height = 90;
 	Main_character.movement_speed = 300.0f;
 	Main_character.health = 100.0f; // maximum health is 100
+	maxHealth = 100;
 	Main_character.type = 1; // Boy or girl
 	Main_character.level = 1;
 	Main_character.exp = 0;
+
+	Main_character.attacks[0].damage = 50; // reset attack dmg
 
 	//Load texture.
 	if (Main_character.type == 1) {
@@ -1273,10 +1278,12 @@ void process_exp_drops() {
 				if (Main_character.exp >= 200) {
 					Main_character.level += 1;
 					Main_character.exp = 0; // Reset EXP after leveling up
+					maxHealth += 20;
+					Main_character.attacks[0].damage += 2;
 				}
 
-				if (Main_character.health >= 100) {
-					Main_character.health = 100;
+				if (Main_character.health > maxHealth) {
+					Main_character.health = maxHealth;
 				}
 			}
 		}
@@ -1818,8 +1825,8 @@ void gameplay_render() {
 		int health_bar_height = 55;
 		int health_bar_x = 1525; // Top left corner of the health bar
 		int health_bar_y = 45; // Adjusted to be at the bottom of the window
-		render_health_bar(renderer, Main_character.health, 100.0f, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
-		render_health_text(renderer, Main_character.health, 100);
+		render_health_bar(renderer, Main_character.health, maxHealth, health_bar_x, health_bar_y, health_bar_width, health_bar_height);
+		render_health_text(renderer, Main_character.health, maxHealth);
 
 		int expBarWidth = 340; // Example width, adjust as needed
 		int expBarHeight = 30; // Example height, adjust as needed
