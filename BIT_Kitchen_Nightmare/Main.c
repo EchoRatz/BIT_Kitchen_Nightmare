@@ -97,6 +97,7 @@ struct character {
 } Main_character;
 
 int maxHealth;
+int coin;
 
 //Each enemy type stat
 typedef struct {
@@ -243,6 +244,7 @@ void render_health_text(SDL_Renderer* renderer, float currentHealth, int maxHeal
 void render_drops(SDL_Renderer* renderer);
 void render_exp_progress_bar(SDL_Renderer* renderer, float exp, int level, int x, int y, int width, int height);
 void render_level(SDL_Renderer* renderer, int level);
+void render_coin(SDL_Renderer* renderer, int coin);
 
 // Cleanup
 void destroy_window();
@@ -768,7 +770,7 @@ void setup() {
 	Food1_texture = load_texture("Assets/Drop/HealthDrops/Small.png", renderer);
 	Food2_texture = load_texture("Assets/Drop/HealthDrops/Medium.png", renderer);
 	Food3_texture = load_texture("Assets/Drop/HealthDrops/Large.png", renderer);
-	//Currency_texture = load_texture("Assets/Drop/small.png", renderer);
+	Currency_texture = load_texture("Assets/Drop/coin.png", renderer);
 
 
 	gameplay_setup();
@@ -789,6 +791,7 @@ void gameplay_setup() {
 	Main_character.exp = 0;
 
 	Main_character.attacks[0].damage = 50; // reset attack dmg
+	coin = 0;
 
 	//Load texture.
 	if (Main_character.type == 1) {
@@ -1115,13 +1118,16 @@ void spawn_wave(int waveIndex) {
 					Enemies[j].currentHealth = type[typeIndex].health;
 					Enemies[j].drop.isActive = 0;
 					
-					typeRand = rand() % 80;// random type
+					typeRand = rand() % 100;// random type
 
-					if (typeRand < 2) Enemies[j].drop.type = 0; // exp
+					
 					if (typeRand == 0) Enemies[j].drop.type = 1; // Food 1
 					if (typeRand == 1) Enemies[j].drop.type = 2; // Food 2
 					if (typeRand == 2) Enemies[j].drop.type = 3; // Food 3
-					//if (typeRand = 3) Enemies[j].drop.type = 4; // Currency
+					if (typeRand > 2)  Enemies[j].drop.type = 4; // Coin
+					if (typeRand > 7) Enemies[j].drop.type = 0; // Exp
+					
+					
 
 					if (Enemies[j].drop.type == 0) {
 						Enemies[j].drop.rect.h = 20;
@@ -1136,6 +1142,10 @@ void spawn_wave(int waveIndex) {
 						Enemies[j].drop.rect.w = 40;
 					}
 					else if (Enemies[j].drop.type == 3) {
+						Enemies[j].drop.rect.h = 50;
+						Enemies[j].drop.rect.w = 50;
+					}
+					else if (Enemies[j].drop.type == 4) {
 						Enemies[j].drop.rect.h = 50;
 						Enemies[j].drop.rect.w = 50;
 					}
@@ -1255,6 +1265,7 @@ void render_drops(SDL_Renderer* renderer) {
 			if (Enemies[i].drop.type == 1)	SDL_RenderCopy(renderer, Food1_texture, NULL, &drop_rect);
 			if (Enemies[i].drop.type == 2)	SDL_RenderCopy(renderer, Food2_texture, NULL, &drop_rect);
 			if (Enemies[i].drop.type == 3)	SDL_RenderCopy(renderer, Food3_texture, NULL, &drop_rect);
+			if (Enemies[i].drop.type == 4)	SDL_RenderCopy(renderer, Currency_texture, NULL, &drop_rect);
 		}
 	}
 }
@@ -1273,6 +1284,7 @@ void process_exp_drops() {
 				if (Enemies[i].drop.type == 1)	Main_character.health += 10; // Increment the main character's level
 				if (Enemies[i].drop.type == 2)	Main_character.health += 25; // Increment the main character's level
 				if (Enemies[i].drop.type == 3)	Main_character.health += 50; // Increment the main character's level
+				if (Enemies[i].drop.type == 4)	coin += 1; // Increment the coin
 
 
 				if (Main_character.exp >= 200) {
@@ -1288,6 +1300,54 @@ void process_exp_drops() {
 			}
 		}
 	}
+}
+
+void render_coin(SDL_Renderer* renderer, int coin) {
+
+	SDL_Rect coin_rect = {	30, 100, 100, 100 };
+	SDL_RenderCopy(renderer, Currency_texture, NULL, &coin_rect);
+
+	// Load the font
+	TTF_Font* font = TTF_OpenFont("Assets/Font/PixeloidSans.ttf", 30); // Smaller font size for the level display
+	if (!font) {
+		printf("Failed to load font: %s\n", TTF_GetError());
+		return;
+	}
+
+	// Create the text to display the level
+	char levelText[50]; // Buffer for level text
+	snprintf(levelText, sizeof(levelText), "x %d", coin); // Format the text
+
+	// Set text color
+	SDL_Color textColor = { 0, 0, 0, 255 }; // Black
+
+	// Create a surface from the text
+	SDL_Surface* textSurface = TTF_RenderText_Solid(font, levelText, textColor);
+	if (!textSurface) {
+		printf("Unable to create text surface: %s\n", TTF_GetError());
+		TTF_CloseFont(font);
+		return;
+	}
+
+	// Create a texture from the surface
+	SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+	if (!textTexture) {
+		printf("Unable to create text texture: %s\n", SDL_GetError());
+		SDL_FreeSurface(textSurface);
+		TTF_CloseFont(font);
+		return;
+	}
+
+	// Calculate the position and size for the level text
+	SDL_Rect renderQuad = { 150, 130, textSurface->w, textSurface->h }; // Position below the timer
+
+	// Copy the texture to the renderer
+	SDL_RenderCopy(renderer, textTexture, NULL, &renderQuad);
+
+	// Clean up
+	SDL_FreeSurface(textSurface);
+	SDL_DestroyTexture(textTexture);
+	TTF_CloseFont(font);
 }
 
 void render_exp_progress_bar(SDL_Renderer* renderer, float exp, int level, int x, int y, int width, int height) {
@@ -1820,6 +1880,9 @@ void gameplay_render() {
 
 		//render timer
 		render_timer(renderer);
+
+		//render coin
+		render_coin(renderer, coin);
 
 		int health_bar_width = 340;
 		int health_bar_height = 55;
