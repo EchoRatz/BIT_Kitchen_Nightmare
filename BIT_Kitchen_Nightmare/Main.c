@@ -329,9 +329,12 @@ int main(int argc, char* argv[]) {
 						else if (event.type == SDL_KEYDOWN) {
 							if (event.key.keysym.sym == SDLK_SPACE) {
 								skipCutscene = true;
+								break;
 							}
 						}
 					}
+
+					if (skipCutscene) break;
 
 					// Construct the path for the next frame
 					snprintf(framePath, sizeof(framePath), "Assets/Cutscene/frame%d.png", i);
