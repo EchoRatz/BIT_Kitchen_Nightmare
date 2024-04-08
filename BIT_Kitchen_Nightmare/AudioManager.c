@@ -61,6 +61,8 @@ void AudioManager_StopMusic() {
 void AudioManager_LoadPredefinedSoundEffect() {
 	soundEffects[SOUND_SLASH] = Mix_LoadWAV("Assets/SoundEffects/Slash_Effect.wav");
 	soundEffects[SOUND_CLICK] = Mix_LoadWAV("Assets/SoundEffects/Click_Effect.wav");
+	soundEffects[SOUND_ITEMPICKUP] = Mix_LoadWAV("Assets/SoundEffects/ItemPickup.wav");
+	soundEffects[SOUND_LEVELUP] = Mix_LoadWAV("Assets/SoundEffects/LevelUp.wav");
 }
 
 static int LoadSoundEffect(const char* file_path) {

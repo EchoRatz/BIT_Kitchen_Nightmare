@@ -33,5 +33,7 @@ typedef enum {
 	SOUND_CLICK,
 	SOUND_GAMEOVER,
 	SOUND_CONGRATS,
+	SOUND_ITEMPICKUP,
+	SOUND_LEVELUP,
 	SOUND_COUNT, //Number of sound effects
 }SoundEffect;
