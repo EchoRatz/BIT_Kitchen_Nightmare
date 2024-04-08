@@ -182,6 +182,9 @@ typedef enum {
 	GAMEWIN_MUSIC,
 	GAMEOVER_MUSIC,
 	CUTSCENE_MUSIC,
+	CHICKB_MUSIC,
+	PIGB_MUSIC,
+	FINALB_MUSIC,
 } MusicTrack;
 
 MusicTrack currentMusicTrack = NONE_MUSIC;
@@ -273,7 +276,7 @@ int main(int argc, char* argv[]) {
 
 				// Play the main menu music
 				if (currentMusicTrack != MAIN_MENU_MUSIC) { // Check if the current music track is not the main menu music
-					AudioManager_LoadAndPlayMusic("Assets/Background Musics/Demo1.mp3", -1); // Load and play the main menu music
+					AudioManager_LoadAndPlayMusic("Assets/Background Musics/MainMenu.mp3", -1); // Load and play the main menu music
 			
 				Mix_VolumeMusic(50); // Set the volume to 50%
 				currentMusicTrack = MAIN_MENU_MUSIC; // Update the current music track
@@ -304,9 +307,9 @@ int main(int argc, char* argv[]) {
 
 			case GAME_STATE_CUTSCENE:{
 
-				// Play the main menu music
-				if (currentMusicTrack != CUTSCENE_MUSIC) { // Check if the current music track is not the main menu music
-					AudioManager_LoadAndPlayMusic("Assets/Background Musics/Cutscene.mp3", -1); // Load and play the main menu music
+				// Play the cutscene music
+				if (currentMusicTrack != CUTSCENE_MUSIC) { // Check if the current music track is not the cutscene music
+					AudioManager_LoadAndPlayMusic("Assets/Background Musics/Cutscene.mp3", -1); // Load and play the cutscene music
 					
 					currentMusicTrack = CUTSCENE_MUSIC; // Update the current music track
 				}
@@ -368,10 +371,9 @@ int main(int argc, char* argv[]) {
 				Uint32 currentTime = getTimerTime();
 
 				if (currentMusicTrack != GAMEPLAY_MUSIC) {
-					AudioManager_LoadAndPlayMusic("Assets/Background Musics/Demo2.mp3", -1);
+					AudioManager_LoadAndPlayMusic("Assets/Background Musics/GamePlay.mp3", -1);
 					currentMusicTrack = GAMEPLAY_MUSIC;
 				}
-				
 
 				if (gameplay_process_input() == 2) { // Indicates a request to enter pause menu
 					pauseTimer();
@@ -1153,9 +1155,6 @@ void spawn_wave(int waveIndex) {
 						Enemies[j].drop.rect.w = 50;
 					}
 					
-
-
-					
 					randPos = rand() % 8; //Random postion for enemy's spawn
 						
 					Enemies[j].rect.x = spawn_position[randPos].x;
@@ -1283,6 +1282,9 @@ void process_exp_drops() {
 				// Collision detected, collect the drop
 
 				Enemies[i].drop.isActive = 0; // Mark the drop as inactive
+				
+				AudioManager_PlayEffect(SOUND_ITEMPICKUP);
+
 				if (Enemies[i].drop.type == 0)	Main_character.exp += 1; // Increment the main character's level
 				if (Enemies[i].drop.type == 1)	Main_character.health += 10; // Increment the main character's level
 				if (Enemies[i].drop.type == 2)	Main_character.health += 25; // Increment the main character's level
@@ -1295,6 +1297,7 @@ void process_exp_drops() {
 					Main_character.exp = 0; // Reset EXP after leveling up
 					maxHealth += 20;
 					Main_character.attacks[0].damage += 2;
+					AudioManager_PlayEffect(SOUND_LEVELUP);
 				}
 
 				if (Main_character.health > maxHealth) {
