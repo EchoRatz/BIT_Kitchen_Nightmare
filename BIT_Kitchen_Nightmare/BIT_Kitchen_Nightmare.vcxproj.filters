@@ -21,7 +21,7 @@
     <ClCompile Include="AudioManager.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="EXPSystem.c">
+    <ClCompile Include="Time.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -32,7 +32,7 @@
     <ClInclude Include="AudioManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="EXPSystem.h">
+    <ClInclude Include="Time.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

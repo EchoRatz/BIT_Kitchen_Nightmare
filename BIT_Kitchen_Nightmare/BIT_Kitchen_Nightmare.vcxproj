@@ -163,13 +163,13 @@
     <ClCompile Include="AudioManager.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="EXPSystem.c" />
     <ClCompile Include="Main.c" />
+    <ClCompile Include="Time.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AudioManager.h" />
     <ClInclude Include="constant.h" />
-    <ClInclude Include="EXPSystem.h" />
+    <ClInclude Include="Time.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
