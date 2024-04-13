@@ -894,6 +894,13 @@ void initialize_enemies(SDL_Renderer* renderer) {
 	type[6].atk = 10;
 	type[6].texture = load_texture("Assets/Enemy/DuckEgg.png", renderer);
 
+	type[7].width = 32;
+	type[7].height = 40;
+	type[7].movement_speed = 150;
+	type[7].health = 100;
+	type[7].atk = 10;
+	type[7].texture = load_texture("Assets/Enemy/Egg.png", renderer);
+
 	type[8].width = 23;
 	type[8].height = 30;
 	type[8].movement_speed = 150;
