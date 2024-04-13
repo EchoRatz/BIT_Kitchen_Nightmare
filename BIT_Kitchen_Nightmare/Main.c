@@ -848,49 +848,49 @@ void initialize_enemies(SDL_Renderer* renderer) {
 	type[0].width = 36;
 	type[0].height = 36;
 	type[0].movement_speed = 150;
-	type[0].health = 49;
+	type[0].health = 100;
 	type[0].atk = 10;
 	type[0].texture = load_texture("Assets/Enemy/Banana.png", renderer);
 	
 	type[1].width = 28;
 	type[1].height = 28;
 	type[1].movement_speed = 150;
-	type[1].health = 550;
+	type[1].health = 150;
 	type[1].atk = 30;
 	type[1].texture = load_texture("Assets/Enemy/Broccoli.png", renderer);
 	
 	type[2].width = 36;
 	type[2].height = 36;
 	type[2].movement_speed = 150;
-	type[2].health = 400;
+	type[2].health = 200;
 	type[2].atk = 30;
 	type[2].texture = load_texture("Assets/Enemy/Chicken.png", renderer);
 	
 	type[3].width = 20;
 	type[3].height = 30;
 	type[3].movement_speed = 150;
-	type[3].health = 240;
+	type[3].health = 100;
 	type[3].atk = 10;
 	type[3].texture = load_texture("Assets/Enemy/Chili.png", renderer);
 
 	type[4].width = 31;
 	type[4].height = 35;
 	type[4].movement_speed = 150;
-	type[4].health = 420;
+	type[4].health = 100;
 	type[4].atk = 10;
 	type[4].texture = load_texture("Assets/Enemy/ChineseCabbage.png", renderer);
 
 	type[5].width = 24;
 	type[5].height = 32;
 	type[5].movement_speed = 150;
-	type[5].health = 370;
+	type[5].health = 100;
 	type[5].atk = 10;
 	type[5].texture = load_texture("Assets/Enemy/DragonFruit.png", renderer);
 
 	type[6].width = 32;
 	type[6].height = 40;
 	type[6].movement_speed = 150;
-	type[6].health = 250;
+	type[6].health = 100;
 	type[6].atk = 10;
 	type[6].texture = load_texture("Assets/Enemy/DuckEgg.png", renderer);
 
@@ -904,113 +904,113 @@ void initialize_enemies(SDL_Renderer* renderer) {
 	type[8].width = 23;
 	type[8].height = 30;
 	type[8].movement_speed = 150;
-	type[8].health = 350;
+	type[8].health = 150;
 	type[8].atk = 30;
 	type[8].texture = load_texture("Assets/Enemy/Flour.png", renderer);
 
 	type[9].width = 36;
 	type[9].height = 36;
 	type[9].movement_speed = 150;
-	type[9].health = 500;
+	type[9].health = 100;
 	type[9].atk = 10;
 	type[9].texture = load_texture("Assets/Enemy/Ginger.png", renderer);
 
 	type[10].width = 26;
 	type[10].height = 29;
 	type[10].movement_speed = 150;
-	type[10].health = 200;
+	type[10].health = 100;
 	type[10].atk = 10;
 	type[10].texture = load_texture("Assets/Enemy/Lime.png", renderer);
 
 	type[11].width = 36;
 	type[11].height = 36;
 	type[11].movement_speed = 150;
-	type[11].health = 200;
+	type[11].health = 150;
 	type[11].atk = 30;
 	type[11].texture = load_texture("Assets/Enemy/Mushroom.png", renderer);
 
 	type[12].width = 29;
 	type[12].height = 30;
 	type[12].movement_speed = 150;
-	type[12].health = 400;
+	type[12].health = 100;
 	type[12].atk = 10;
 	type[12].texture = load_texture("Assets/Enemy/Onion.png", renderer);
 
 	type[13].width = 36;
 	type[13].height = 36;
 	type[13].movement_speed = 150;
-	type[13].health = 150;
+	type[13].health = 100;
 	type[13].atk = 10;
 	type[13].texture = load_texture("Assets/Enemy/Paprica.png", renderer);
 
 	type[14].width = 49;
 	type[14].height = 37;
 	type[14].movement_speed = 150;
-	type[14].health = 300;
+	type[14].health = 200;
 	type[14].atk = 30;
 	type[14].texture = load_texture("Assets/Enemy/Pig.png", renderer);
 
 	type[15].width = 36;
 	type[15].height = 36;
 	type[15].movement_speed = 150;
-	type[15].health = 170;
+	type[15].health = 150;
 	type[15].atk = 30;
 	type[15].texture = load_texture("Assets/Enemy/Rice.png", renderer);
 
 	type[16].width = 32;
 	type[16].height = 23;
 	type[16].movement_speed = 150;
-	type[16].health = 200;
+	type[16].health = 150;
 	type[16].atk = 30;
 	type[16].texture = load_texture("Assets/Enemy/RottenFishv1.png", renderer);
 
 	type[17].width = 33;
 	type[17].height = 27;
 	type[17].movement_speed = 150;
-	type[17].health = 220;
+	type[17].health = 150;
 	type[17].atk = 30;
 	type[17].texture = load_texture("Assets/Enemy/RottenFishv2.png", renderer);
 
 	type[18].width = 36;
 	type[18].height = 36;
 	type[18].movement_speed = 150;
-	type[18].health = 180;
+	type[18].health = 150;
 	type[18].atk = 30;
 	type[18].texture = load_texture("Assets/Enemy/Shrimp.png", renderer);
 
 	type[19].width = 36;
 	type[19].height = 36;
 	type[19].movement_speed = 150;
-	type[19].health = 200;
+	type[19].health = 100;
 	type[19].atk = 10;
 	type[19].texture = load_texture("Assets/Enemy/Tomato.png", renderer);
 
 	type[20].width = 36;
 	type[20].height = 36;
 	type[20].movement_speed = 150;
-	type[20].health = 300;
+	type[20].health = 150;
 	type[20].atk = 30;
 	type[20].texture = load_texture("Assets/Enemy/Yeast.png", renderer);
 
-	type[21].width = 248;
-	type[21].height = 280;
+	type[21].width = 124;
+	type[21].height = 140;
 	type[21].movement_speed = 150;
-	type[21].health = 800;
-	type[21].atk = 100;
+	type[21].health = 300;
+	type[21].atk = 50;
 	type[21].texture = load_texture("Assets/Enemy/ChickenMiniBoss.png", renderer);
 
-	type[22].width = 214;
-	type[22].height = 284;
+	type[22].width = 107;
+	type[22].height = 142;
 	type[22].movement_speed = 150;
-	type[22].health = 900;
-	type[22].atk = 130;
+	type[22].health = 300;
+	type[22].atk = 50;
 	type[22].texture = load_texture("Assets/Enemy/PigMiniBoss.png", renderer);
 
-	type[23].width = 408;
-	type[23].height = 510;
+	type[23].width = 204;
+	type[23].height = 255;
 	type[23].movement_speed = 150;
-	type[23].health = 1500;
-	type[23].atk = 170;
+	type[23].health = 500;
+	type[23].atk = 50;
 	type[23].texture = load_texture("Assets/Enemy/BeefFinalBoss.png", renderer);
 	
 }
@@ -1396,7 +1396,7 @@ void initialize_attacks(void) {
 	Main_character.attacks[0].cooldown = 500; // Example: 2 seconds
 	Main_character.attacks[0].lastAttackTime = 0;
 	Main_character.attacks[0].lastTimeRender = 0;
-	Main_character.attacks[0].damage = 49; // Example damage
+	Main_character.attacks[0].damage = 50; // Example damage
 	Main_character.attacks[0].area = (SDL_Rect){0, 0, 200, 300}; // Set size, position is dynamic
 	Main_character.attacks[0].vfxTexture = load_texture("Assets/Attack_VFX/Attack3.png", renderer);
 
